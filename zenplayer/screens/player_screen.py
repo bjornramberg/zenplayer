@@ -12,6 +12,7 @@ from zenplayer.widgets.album_art import AlbumArt
 from zenplayer.widgets.controls import Controls
 from zenplayer.widgets.now_playing import NowPlayingOverlay
 from zenplayer.widgets.queue_view import QueueView
+from zenplayer.widgets.search_preview import SearchPreview
 from zenplayer.widgets.search_results import SearchResults
 
 
@@ -28,6 +29,7 @@ class PlayerScreen(Screen):
                 with Vertical(id="search-panel"):
                     yield Input(placeholder="Search...", id="player-search")
                     yield SearchResults()
+                    yield SearchPreview()
                 with Vertical(id="player-panel"):
                     yield AlbumArt()
                     yield NowPlayingOverlay()
@@ -90,7 +92,8 @@ class PlayerScreen(Screen):
             tracks = search(query, limit=limit)
             results = [
                 {"id": t.id, "title": t.title, "artist": t.artist,
-                 "duration": t.duration, "url": t.url}
+                 "duration": t.duration, "url": t.url,
+                 "description": getattr(t, "description", "")}
                 for t in tracks
             ]
             set_cached(query, results, limit)
@@ -114,3 +117,10 @@ class PlayerScreen(Screen):
         item = event.item
         if hasattr(item, "track") and item.track:
             self.app.play_track(item.track)
+
+    def on_list_view_highlighted(self, event: ListView.Highlighted):
+        track = getattr(event.item, "track", None) if event.item else None
+        try:
+            self.query_one(SearchPreview).set_track(track)
+        except Exception:
+            pass

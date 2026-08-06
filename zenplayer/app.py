@@ -87,8 +87,26 @@ QueueView {
     padding: 0 1;
 }
 
-ResultView {
+SearchResults {
     height: 1fr;
+}
+
+SearchPreview {
+    width: 1fr;
+    height: 12;
+}
+
+SearchPreviewArt {
+    width: 24;
+    height: 12;
+    border: solid #222222;
+}
+
+SearchPreviewInfo {
+    width: 1fr;
+    height: 12;
+    padding: 1 1 0 1;
+    content-align: left top;
 }
 
 ListView {
@@ -329,4 +347,5 @@ class ZenPlayer(App):
             duration=data.get("duration", 0),
             url=data.get("url", ""),
             thumbnail=data.get("thumbnail"),
+            description=data.get("description", ""),
         )

@@ -12,6 +12,7 @@ class TrackInfo:
     duration: int
     url: str
     thumbnail: Optional[str] = None
+    description: Optional[str] = None
     source: str = "youtube"
 
 
@@ -37,6 +38,7 @@ def search(query: str, limit: int = 10) -> list[TrackInfo]:
                 duration=entry.get("duration", 0),
                 url=entry.get("url") or f"https://www.youtube.com/watch?v={entry['id']}",
                 thumbnail=entry.get("thumbnail"),
+                description=entry.get("description", ""),
             ))
         return results
 

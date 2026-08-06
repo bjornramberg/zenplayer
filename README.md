@@ -11,6 +11,7 @@ A terminal-based YouTube Music client with an album-art now-playing display.
 - **mpv-backed playback** with seek, volume, pause, next/previous (commands dispatched over a dedicated thread)
 - **Thumbnail caching** — cover art cached on disk for instant replays
 - **Debounced, cached search** — async results with a 5-minute cache TTL and 300 ms debounce; result depth is configurable via `search_limit` (default 30)
+- **Search preview** — arrow through results to see a square thumbnail and word-wrapped description (title, artist, duration, YouTube description) in the sidebar
 - **Volume persistence** — volume changes are saved to the config file
 - **Stall-resistant output** — a non-blocking terminal writer with drop detection that self-recovers on slow terminals
 
@@ -64,11 +65,13 @@ zenplayer/
 │   ├── player_screen.py  # Main player layout (album art + controls + search sidebar)
 │   └── search_screen.py  # Full-screen search overlay
 ├── widgets/
-│   ├── album_art.py      # AlbumArt — half-block truecolor art (quantized, run-merged)
-│   ├── now_playing.py    # NowPlayingOverlay — title/artist/progress + bass glow
-│   ├── controls.py       # Playback controls bar
-│   ├── queue_view.py     # Current playlist queue
-│   └── search_results.py # Search result list items
+│   ├── _art.py             # Shared half-block render helpers (quantize, run-merge)
+│   ├── album_art.py        # AlbumArt — full-panel truecolor art (quantized, run-merged)
+│   ├── search_preview.py   # SearchPreview — square thumbnail + description on highlight
+│   ├── now_playing.py      # NowPlayingOverlay — title/artist/progress + bass glow
+│   ├── controls.py         # Playback controls bar
+│   ├── queue_view.py       # Current playlist queue
+│   └── search_results.py   # Search result list items
 └── utils/
     ├── cache.py          # Search result disk cache with TTL
     ├── thumbnail.py      # Thumbnail fetch + disk cache

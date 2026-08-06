@@ -58,7 +58,8 @@ class SearchScreen(Screen):
             tracks = search(query, limit=limit)
             cached_data = [
                 {"id": t.id, "title": t.title, "artist": t.artist,
-                 "duration": t.duration, "url": t.url}
+                 "duration": t.duration, "url": t.url,
+                 "description": getattr(t, "description", "")}
                 for t in tracks
             ]
             set_cached(query, cached_data, limit)

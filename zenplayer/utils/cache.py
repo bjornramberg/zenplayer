@@ -27,9 +27,14 @@ def _has_valid_urls(results: list) -> bool:
     )
 
 
-def get_cached(query: str):
+def _key(query: str, limit: int | None) -> str:
+    # Key by limit too so changing search_limit invalidates old entries.
+    return f"{query}|{limit}" if limit is not None else query
+
+
+def get_cached(query: str, limit: int | None = None):
     cache = load_cache()
-    entry = cache.get(query)
+    entry = cache.get(_key(query, limit))
     if entry and time.time() - entry.get("timestamp", 0) < CACHE_TTL:
         results = entry.get("results")
         if results and _has_valid_urls(results):
@@ -37,11 +42,11 @@ def get_cached(query: str):
     return None
 
 
-def set_cached(query: str, results: list) -> None:
+def set_cached(query: str, results: list, limit: int | None = None) -> None:
     if not results or not _has_valid_urls(results):
         return
     cache = load_cache()
-    cache[query] = {"results": results, "timestamp": time.time()}
+    cache[_key(query, limit)] = {"results": results, "timestamp": time.time()}
     now = time.time()
     cache = {k: v for k, v in cache.items() if now - v.get("timestamp", 0) < CACHE_TTL}
     save_cache(cache)

@@ -48,19 +48,20 @@ class SearchScreen(Screen):
 
     @work(thread=True, exclusive=True, group="search")
     def _run_search(self, query: str):
-        cached = get_cached(query)
+        limit = int(self.app.config.get("search_limit", 30))
+        cached = get_cached(query, limit)
         if cached:
             tracks = [self.app._track_from_dict(t) for t in cached]
             self._post(self._apply_results, query, tracks, True)
             return
         try:
-            tracks = search(query)
+            tracks = search(query, limit=limit)
             cached_data = [
                 {"id": t.id, "title": t.title, "artist": t.artist,
                  "duration": t.duration, "url": t.url}
                 for t in tracks
             ]
-            set_cached(query, cached_data)
+            set_cached(query, cached_data, limit)
             self._post(self._apply_results, query, tracks, False)
         except Exception as e:
             self._post(self._apply_error, query, str(e))

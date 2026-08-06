@@ -7,6 +7,7 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 DEFAULT_CONFIG = {
     "volume": 50,
     "reactive_fps": 24,
+    "search_limit": 30,
 }
 
 

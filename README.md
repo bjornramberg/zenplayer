@@ -10,7 +10,7 @@ A terminal-based YouTube Music client with an album-art now-playing display.
 - **Dual-screen layout** — player view with search sidebar toggled via `ctrl+p`
 - **mpv-backed playback** with seek, volume, pause, next/previous (commands dispatched over a dedicated thread)
 - **Thumbnail caching** — cover art cached on disk for instant replays
-- **Debounced, cached search** — async results with a 5-minute cache TTL and 300 ms debounce
+- **Debounced, cached search** — async results with a 5-minute cache TTL and 300 ms debounce; result depth is configurable via `search_limit` (default 30)
 - **Volume persistence** — volume changes are saved to the config file
 - **Stall-resistant output** — a non-blocking terminal writer with drop detection that self-recovers on slow terminals
 
@@ -90,12 +90,14 @@ zenplayer/
 ```json
 {
   "volume": 50,
-  "reactive_fps": 24
+  "reactive_fps": 24,
+  "search_limit": 30
 }
 ```
 
 - `volume` — initial volume (0–100); also updated when you change it in-app
 - `reactive_fps` — how often the bass analysis runs and the glow updates (default 24)
+- `search_limit` — how many results each search fetches (default 30)
 
 ## License
 

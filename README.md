@@ -36,7 +36,11 @@ pip install -e .
 zenplayer
 ```
 
+The search bar is focused on startup — just start typing to search. Press `escape` to unfocus it and use keyboard shortcuts.
+
 ### Controls
+
+Keyboard shortcuts (also shown in the footer):
 
 | Key | Action |
 |---|---|
@@ -47,6 +51,8 @@ zenplayer
 | `+` / `-` | Volume up / down |
 | `n` / `p` | Next / Previous track |
 | `q` | Quit |
+
+The play/pause, next, and previous buttons in the controls bar are also clickable.
 
 ## Architecture
 

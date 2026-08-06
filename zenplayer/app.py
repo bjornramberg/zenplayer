@@ -36,6 +36,18 @@ Screen {
     background: #111111;
     color: #c0c0c0;
     border: none;
+    padding: 1 0 0 1;
+}
+
+#search-panel-header {
+    dock: top;
+    color: #555555;
+    padding: 0 1;
+    height: 1;
+}
+
+Footer {
+    height: 1;
 }
 
 #player-panel {
@@ -70,12 +82,19 @@ QueueView {
 }
 
 .control-btn {
-    color: #c0c0c0;
-    margin: 0 0;
+    background: transparent;
+    border: solid transparent;
+    padding: 0 1;
+    min-width: 0;
+    height: auto;
 }
 
 .control-btn:hover {
-    color: #ff6b6b;
+    background: #1a1a1a;
+}
+
+.control-btn.-active {
+    background: #222222;
 }
 
 .vol-bar {
@@ -110,6 +129,7 @@ SearchPreviewInfo {
 }
 
 ListView {
+    margin: 0 1;
     background: #0a0a0a;
 }
 
@@ -118,11 +138,16 @@ ListView:focus {
 }
 
 ListItem {
-    padding: 0 1;
+    margin: 0 1;
+    padding: 0;
     color: #c0c0c0;
 }
 
 ListItem:hover {
+    background: #1a1a1a;
+}
+
+ListItem.-highlight {
     background: #1a1a1a;
 }
 
@@ -157,6 +182,7 @@ ListItem > Label {
 
 class ZenPlayer(App):
     CSS = ZENPLAYER_CSS
+    TITLE = "zenplayer"
     ENABLE_COMMAND_PALETTE = False
 
     BINDINGS: list[BindingType] = [

@@ -2,7 +2,7 @@ from textual import work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Input
+from textual.widgets import Footer, Input, Label
 from textual.widgets._list_view import ListView
 
 from zenplayer.audio.extractor import search
@@ -17,7 +17,7 @@ from zenplayer.widgets.search_results import SearchResults
 
 
 class PlayerScreen(Screen):
-    AUTO_FOCUS = ""
+    AUTO_FOCUS = "#player-search"
 
     def __init__(self, volume: int = 50, **kwargs):
         super().__init__(**kwargs)
@@ -27,6 +27,7 @@ class PlayerScreen(Screen):
         with Vertical():
             with Horizontal(id="main-area"):
                 with Vertical(id="search-panel"):
+                    yield Label("  Search", id="search-panel-header")
                     yield Input(placeholder="Search...", id="player-search")
                     yield SearchResults()
                     yield SearchPreview()
@@ -35,6 +36,7 @@ class PlayerScreen(Screen):
                     yield NowPlayingOverlay()
             yield QueueView()
             yield Controls(volume=self._volume)
+            yield Footer()
 
     def on_mount(self):
         self._art_track = None

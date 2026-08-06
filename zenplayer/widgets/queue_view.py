@@ -9,6 +9,7 @@ class QueueView(Horizontal):
     def __init__(self):
         super().__init__()
         self._queue: list = []
+        self.display = False
 
     def compose(self) -> ComposeResult:
         yield Label("", id="queue-label")
@@ -17,6 +18,7 @@ class QueueView(Horizontal):
         if tracks == self._queue:
             return
         self._queue = tracks
+        self.display = bool(tracks)
         label = self.query_one("#queue-label", Label)
         if not tracks:
             label.update("  Queue: (empty)")

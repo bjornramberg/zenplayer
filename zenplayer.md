@@ -2,7 +2,7 @@
 
 ## Overview
 
-**zenplayer** is a minimal terminal-based YouTube Music client with a circular audio visualizer. It runs in any modern terminal emulator, uses `mpv` for playback, and `yt-dlp` for audio extraction.
+**zenplayer** is a minimal terminal-based YouTube Music client with an album-art now-playing display. It runs in any modern terminal emulator, uses `mpv` for playback, and `yt-dlp` for audio extraction.
 
 ---
 
@@ -14,8 +14,8 @@
 | **TUI Framework** | [Textual](https://github.com/Textualize/textual) | Modern, reactive, minimal by default, excellent widget system |
 | **Audio Extraction** | yt-dlp (Python API) | Extracts audio stream URLs + metadata without API keys |
 | **Playback Engine** | mpv via subprocess | Lightweight, handles streaming, pitch correction, gapless |
-| **Visualizer Math** | numpy + FFT | Frequency analysis from raw PCM data piped from mpv |
-| **Visualizer Render** | Unicode braille + block chars in Textual Canvas widget | Works in any terminal, no external deps |
+| **Album Art Render** | Pillow + numpy, truecolor half-blocks | Downscales thumbnails; per-cell fg/bg half-block art |
+| **Thumbnail Fetch** | urllib + disk cache | Instant replays via `~/.cache/zenplayer/thumbs/` |
 
 ---
 
@@ -28,18 +28,16 @@
 │  ┌────────────────────────────────────────────┐   │
 │  │            Header (app name, time)          │   │
 │  ├─────────────────────┬──────────────────────┤   │
-│  │    Search Panel      │   Now Playing +      │   │
-│  │    (results list)    │   Circular Visualizer │   │
-│  │                      │                      │   │
-│  │  ┌─────────────────┐ │  ┌────────────────┐  │   │
-│  │  │ Query input      │ │  │   ╭─────╮     │  │   │
-│  │  │ Result 1         │ │  │  ╱ ● ● ● ╲    │  │   │
-│  │  │ Result 2         │ │  │ │ ◉ ◉ ◉ ◉ │   │  │   │
-│  │  │ Result 3         │ │  │  ╲ ◉ ◉ ◉ ╱    │  │   │
-│  │  └─────────────────┘ │  │   ╰─────╯     │  │   │
-│  │                      │  │  Track Title    │  │   │
-│  │                      │  │  Artist Name    │  │   │
-│  │                      │  └────────────────┘  │   │
+│  │    Search Panel      │   Now Playing        │   │
+│  │    (results list)    │   ┌──────────────┐   │   │
+│  │                      │   │  █▀▄▀▄██▀▄█▀ │   │   │
+│  │  ┌─────────────────┐ │   │  █▄▀████▀▄██▀ │   │   │
+│  │  │ Query input      │ │   │  █████▄▀███▀  │   │   │
+│  │  │ Result 1         │ │   │  ▀▄▀██████▀▄█ │   │   │
+│  │  │ Result 2         │ │   │  Track Title   │   │   │
+│  │  │ Result 3         │ │   │  Artist         │   │   │
+│  │  └─────────────────┘ │   │  ▓▓▓▓░░ 1:34    │   │   │
+│  │                      │   └──────────────┘   │   │
 │  ├─────────────────────┴──────────────────────┤   │
 │  │           Queue Bar (up next list)          │   │
 │  ├────────────────────────────────────────────┤   │
@@ -49,10 +47,12 @@
           │                  │              │
           ▼                  ▼              ▼
    ┌────────────┐   ┌────────────┐   ┌────────────┐
-   │  yt-dlp    │   │    mpv     │   │  PCM FIFO  │
-   │ (search +  │──▶│ (playback) │──▶│  → FFT →   │
-   │  extract)  │   │            │   │  Visualizer│
-   └────────────┘   └────────────┘   └────────────┘
+   │  yt-dlp    │   │    mpv     │   │  Thumbnail │
+   │ (search +  │──▶│ (playback) │   │  fetch →   │
+   │  extract)  │   │            │   │  disk cache│
+   └────────────┘   └────────────┘   └─────┬──────┘
+                                           ▼
+                                    AlbumArt widget
 ```
 
 ---
@@ -61,12 +61,13 @@
 
 ```
 1. User types search query
-2. yt-dlp search extracts results (title, artist, duration, URL)
-3. User selects a track → added to mpv's internal playlist
-4. mpv plays audio, outputs raw PCM data via --audio-file or FIFO
-5. Python reads PCM, runs numpy FFT → frequency bin magnitudes
-6. Visualizer widget maps bins to radial spokes, renders every frame
-7. User controls playback via keyboard (Space=play/pause, etc.)
+2. yt-dlp search extracts results (title, artist, duration, thumbnail URL)
+3. User selects a track → added to queue, mpv starts playback
+4. PlayerScreen polls mpv every 0.5s for time/volume/paused state
+5. AlbumArt fetches the thumbnail in a background worker (cached on disk)
+6. Thumbnail is center-cropped to the panel, downscaled to W×2H, rendered as half-blocks
+7. Title, artist, and progress bar are composited over a scrim at the bottom
+8. User controls playback via keyboard (Space=play/pause, etc.)
 ```
 
 ---
@@ -85,59 +86,55 @@ zenplayer/
 │   │
 │   ├── screens/
 │   │   ├── search_screen.py     # Full-screen search view
-│   │   └── player_screen.py     # Main player + visualizer view
+│   │   └── player_screen.py     # Main player + album art view
 │   │
 │   ├── widgets/
-│   │   ├── visualizer.py        # Circular radial visualizer (Textual Canvas)
+│   │   ├── album_art.py         # AlbumArt: half-block truecolor art + overlay
 │   │   ├── search_results.py    # Results list widget
 │   │   ├── queue_view.py        # Queue/up-next display
 │   │   └── controls.py          # Playback controls bar
 │   │
 │   ├── audio/
 │   │   ├── extractor.py         # yt-dlp: search, extract stream URL, metadata
-│   │   ├── player.py            # mpv subprocess manager (start/stop/seek/volume)
-│   │   └── analyzer.py          # PCM → FFT → frequency bins (numpy)
+│   │   └── player.py            # mpv subprocess manager (start/stop/seek/volume)
 │   │
 │   └── utils/
+│       ├── thumbnail.py         # Thumbnail fetch, disk cache, decode
 │       ├── cache.py             # Search result cache (SQLite/simple JSON)
 │       └── format.py            # Duration formatting, etc.
 ```
 
 ---
 
-## Circular Visualizer Design
+## Album Art Design
 
 ```
-       Low ──── Freq ────► High
-         ╭─────────────╮
-         │  ╭───────╮  │
-         │  │ ╭───╮ │  │
-         │  │ │ ● │ │  │
-         │  │ ╰───╯ │  │
-         │  ╰───────╯  │
-         ╰─────────────╯
+┌──────────────────────────────────────┐
+│  ██▀▄▄▀▄█████▀▄▄████▄▀▀▄▄█▄▀████▀▄██ │  ← real thumbnail,
+│  ▄▀████▀▄█████▄████▄▀████▄████▀▄████▀ │    half-block truecolor art
+│  ███▄▀▄████▀▄████████▀▄████▄▀▄██████  │    filling the whole panel
+│  ──────────────────────────────────── │  ← scrim gradient
+│  Midnight City                     M83 │  ← title / artist
+│  █████████████████░░░░░░░   2:14 / 4:04│  ← progress bar + time
+└──────────────────────────────────────┘
 ```
 
 **How it works:**
 
-1. mpv outputs raw PCM audio data (16-bit signed, 44100 Hz) to a FIFO pipe
-2. `analyzer.py` reads chunks (e.g. 2048 samples), applies Hann window, runs numpy FFT
-3. FFT output is divided into N frequency bands (e.g. 32 bands)
-4. Magnitudes are smoothed with exponential moving average (avoid jitter)
-5. `visualizer.py` maps each band to a radial spoke:
-   - Angle = evenly spaced around 0°–360°
-   - Length = normalized magnitude (0.0–1.0), mapped to radius range
-   - Inner radius for low freqs, outer radius for high freqs
-6. Braille characters (`⣀⣤⣶⣿` etc.) or block chars (`░▒▓█`) rendered at spoke endpoints on Textual's Canvas widget
-7. Refreshes at ~30 fps using Textual's `set_interval`
+1. `AlbumArt.set_track()` runs a Textual worker that fetches the YouTube thumbnail (`https://i.ytimg.com/vi/{id}/hqdefault.jpg`) and caches it at `~/.cache/zenplayer/thumbs/{id}.jpg`
+2. The image is center-cropped to the panel's aspect ratio (`ImageOps.fit`) and downscaled to `W×2H` pixels, where `W×H` is the widget size in cells
+3. Each cell is rendered with the `▀` half-block character: the **top pixel → foreground color**, the **bottom pixel → background color** — giving full 2× vertical resolution in a single terminal row
+4. A dark scrim gradient is composited over the bottom rows so overlaid text stays readable
+5. Title (bold white), artist (muted), and a coral progress bar with times are drawn onto the scrim
+6. Pausing dims the art ~50% and appends "(paused)"; a deterministic gradient cover derived from the track id is shown while loading or if the thumbnail is unavailable
+7. The art pixel rows are cached; only the overlay rows regenerate on the 0.5s progress tick
 
 **Technical details:**
 
-- FFT size: 2048 (good frequency resolution, low latency)
-- Bands: 32 equally spaced on log scale (perceptual)
-- Smoothing: α = 0.3 EMA per band
-- Render: Textual `Canvas` widget with braille/block characters, drawn in `compose()` or `render_line()`
-- Fallback: if terminal doesn't support braille, falls back to ASCII `.,-~=*#`
+- Colors: per-cell truecolor hex via Rich `Style`; Textual degrades gracefully on 256-color terminals
+- Aspect: full-bleed center-crop (Spotify-style), so no dead space in the player panel
+- Threading: `@work(thread=True, exclusive=True)` worker; result applied via `App.call_from_thread`
+- Resolution needs are tiny (~W×2H ≈ 150×50 px), so the 480×360 thumbnail is more than enough
 
 ---
 
@@ -158,7 +155,7 @@ COLORS = {
 
 - No unnecessary borders or padding
 - Text-only controls (no unicode symbols unless essential)
-- Visualizer uses accent color with varying brightness for depth
+- Album art renders in its natural colors; overlay text uses the accent for the progress bar
 
 ---
 
@@ -184,7 +181,7 @@ COLORS = {
 
 ```bash
 # Dependencies
-pip install textual yt-dlp numpy
+pip install textual yt-dlp numpy pillow
 sudo apt install mpv           # Or pacman -S mpv / brew install mpv
 
 # Run
@@ -196,17 +193,16 @@ python -m zenplayer
 ## Future / Optional Features (Phase 2)
 
 - **Login support** — youtube-authentication for playlists/library
-- **Album art** — display via kitty terminal protocol
-- **Equalizer** — adjust frequency bands interactively
-- **Presets** — multiple visualizer color palettes
+- **Full-res album art** — `maxresdefault.jpg` when available (bigger terminals)
 - **MPRIS integration** — media keys / desktop integration
 - **Download mode** — offline playback of cached tracks
+- **Reactive visualizer** — a polished audio-reactive mode (needs audio capture re-added)
 
 ---
 
 ## Open Questions
 
-1. **Visualizer rendering:** Unicode braille/block chars on Textual Canvas (works everywhere) vs terminal pixel graphics (kitty protocol, smoother) vs separate small GTK window (best visuals)
+1. **Album art source:** `hqdefault.jpg` (always available) vs `maxresdefault.jpg` (higher res, sometimes 404) with fallback?
 2. **Search source:** Just search YouTube Music videos? Filter to music only?
 3. **Playlist/auth:** Login to YouTube Music for library access, or public search only?
 4. **Python dependency management:** Poetry / pip + venv / plain pip?

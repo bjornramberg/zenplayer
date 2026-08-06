@@ -2,6 +2,9 @@ import numpy as np
 
 from zenplayer.audio.capture import AudioCapture
 
+BASS_LO_HZ = 40.0
+BASS_HI_HZ = 240.0
+
 
 class AudioAnalyzer:
     def __init__(self, num_bands: int = 16, smoothing: float = 0.3):
@@ -9,6 +12,7 @@ class AudioAnalyzer:
         self._smoothing = smoothing
         self.bands = [0.0] * num_bands
         self._targets = [0.0] * num_bands
+        self.bass_power = 0.0
         self._capture = AudioCapture()
         self._playing = False
 
@@ -20,8 +24,12 @@ class AudioAnalyzer:
         elif not playing and was:
             self._capture.stop()
 
+    @property
+    def is_active(self) -> bool:
+        return self._playing and self._capture._proc is not None
+
     def update(self):
-        if not self._playing:
+        if not self._playing or self._capture._proc is None:
             for i in range(self.num_bands):
                 self.bands[i] *= 0.92
                 if self.bands[i] < 0.005:
@@ -30,6 +38,11 @@ class AudioAnalyzer:
 
         fft = self._capture.get_fft()
         n = len(fft)
+
+        bin_hz = self._capture.rate / self._capture.chunk
+        b_lo = max(1, min(int(BASS_LO_HZ / bin_hz), n - 1))
+        b_hi = max(b_lo + 1, min(int(BASS_HI_HZ / bin_hz) + 1, n))
+        self.bass_power = float(np.mean(fft[b_lo:b_hi]))
 
         total = float(np.sum(fft[1:])) + 1e-10
         avg = total / (n - 1)
@@ -46,6 +59,9 @@ class AudioAnalyzer:
 
     def get_bands(self) -> list[float]:
         return self.bands
+
+    def get_bass_power(self) -> float:
+        return self.bass_power
 
     def stop(self):
         self._playing = False

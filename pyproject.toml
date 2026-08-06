@@ -1,12 +1,13 @@
 [project]
 name = "zenplayer"
 version = "0.1.0"
-description = "Minimal terminal YouTube Music client with circular audio visualizer"
+description = "Minimal terminal YouTube Music client with album art now-playing display"
 requires-python = ">=3.11"
 dependencies = [
     "textual>=0.41.0",
     "yt-dlp>=2023.0.0",
     "numpy>=1.24.0",
+    "pillow>=10.0",
 ]
 
 [project.scripts]
@@ -14,4 +15,4 @@ zenplayer = "zenplayer.__main__:main"
 
 [build-system]
 requires = ["setuptools>=68.0"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"

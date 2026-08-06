@@ -1,18 +1,27 @@
+from textual import work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Input, Label
+from textual.widgets import Input
 from textual.widgets._list_view import ListView
 
 from zenplayer.audio.extractor import search
+from zenplayer import nonblocking_output
 from zenplayer.utils.cache import get_cached, set_cached
+from zenplayer.widgets.album_art import AlbumArt
 from zenplayer.widgets.controls import Controls
+from zenplayer.widgets.now_playing import NowPlayingOverlay
 from zenplayer.widgets.queue_view import QueueView
-from zenplayer.widgets.search_results import SearchResults, SearchResultItem
-from zenplayer.widgets.visualizer import SymmetricalSpectrum
+from zenplayer.widgets.search_results import SearchResults
 
 
 class PlayerScreen(Screen):
+    AUTO_FOCUS = ""
+
+    def __init__(self, volume: int = 50, **kwargs):
+        super().__init__(**kwargs)
+        self._volume = volume
+
     def compose(self) -> ComposeResult:
         with Vertical():
             with Horizontal(id="main-area"):
@@ -20,21 +29,28 @@ class PlayerScreen(Screen):
                     yield Input(placeholder="Search...", id="player-search")
                     yield SearchResults()
                 with Vertical(id="player-panel"):
-                    yield Label("", id="now-playing", classes="np-info")
-                    yield Label("", id="now-artist", classes="np-info")
-                    yield SymmetricalSpectrum()
+                    yield AlbumArt()
+                    yield NowPlayingOverlay()
             yield QueueView()
-            yield Controls()
+            yield Controls(volume=self._volume)
 
     def on_mount(self):
+        self._art_track = None
+        self._current_query = ""
         self.set_interval(0.5, self._update_controls)
 
     def _update_controls(self):
+        if self.app.screen is not self:
+            return
         app = self.app
         if app.player.process is None:
             return
+        if nonblocking_output.full():
+            # The terminal isn't draining output right now; skip the repaint
+            # work rather than fill the queue. When it drains again,
+            # _repaint_if_dropped catches everything up.
+            return
 
-        app.player.poll_properties()
         controls = self.query_one(Controls)
         controls.update_state(
             paused=app.player.paused,
@@ -43,11 +59,14 @@ class PlayerScreen(Screen):
             duration=app.player.duration,
         )
 
-        if app.current_track:
-            np_label = self.query_one("#now-playing", Label)
-            np_artist = self.query_one("#now-artist", Label)
-            np_label.update(f"  {app.current_track.title}")
-            np_artist.update(f"  {app.current_track.artist}")
+        album_art = self.query_one(AlbumArt)
+        overlay = self.query_one(NowPlayingOverlay)
+        if app.current_track is not None and app.current_track is not self._art_track:
+            self._art_track = app.current_track
+            album_art.set_track(app.current_track)
+            overlay.set_track(app.current_track)
+        overlay.set_progress(app.player.time_pos, app.player.duration)
+        overlay.set_paused(app.player.paused)
 
         queue_view = self.query_one(QueueView)
         queue_view.set_queue(app.queue)
@@ -56,25 +75,39 @@ class PlayerScreen(Screen):
         query = event.value.strip()
         if not query:
             return
+        self._current_query = query
+        self._run_search(query)
 
-        results_widget = self.query_one(SearchResults)
+    @work(thread=True, exclusive=True, group="search")
+    def _run_search(self, query: str):
         cached = get_cached(query)
         if cached:
             tracks = [self.app._track_from_dict(t) for t in cached]
-            results_widget.set_results(tracks, autofocus=True)
+            self._post(self._apply_results, query, tracks)
             return
-
         try:
             tracks = search(query)
-            results_widget.set_results(tracks, autofocus=True)
-            cached_data = [
+            results = [
                 {"id": t.id, "title": t.title, "artist": t.artist,
                  "duration": t.duration, "url": t.url}
                 for t in tracks
             ]
-            set_cached(query, cached_data)
+            set_cached(query, results)
+            self._post(self._apply_results, query, tracks)
         except Exception:
             pass
+
+    def _post(self, callback, *args):
+        try:
+            self.app.call_from_thread(callback, *args)
+        except Exception:
+            pass
+
+    def _apply_results(self, query: str, tracks: list):
+        if not self.is_mounted or query != self._current_query:
+            return
+        results_widget = self.query_one(SearchResults)
+        results_widget.set_results(tracks, autofocus=True)
 
     def on_list_view_selected(self, event: ListView.Selected):
         item = event.item

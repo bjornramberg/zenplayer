@@ -14,6 +14,8 @@ class QueueView(Horizontal):
         yield Label("", id="queue-label")
 
     def set_queue(self, tracks: list) -> None:
+        if tracks == self._queue:
+            return
         self._queue = tracks
         label = self.query_one("#queue-label", Label)
         if not tracks:

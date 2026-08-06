@@ -1,22 +1,32 @@
 import json
 import os
-import signal
+import queue
 import socket
 import subprocess
+import threading
 import time
+from itertools import count
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
+
+POLL_INTERVAL = 0.25
+SOCKET_WAIT = 5.0
+RECV_TIMEOUT = 0.25
 
 
 class MpvPlayer:
-    def __init__(self):
+    def __init__(self, volume: int = 50):
         self.process: Optional[subprocess.Popen] = None
         self.sock_path: Optional[str] = None
-        self.sock: Optional[socket.socket] = None
-        self._volume = 50
+        self._volume = volume
         self._paused = True
         self._duration = 0.0
         self._time_pos = 0.0
+        self._cmd_queue: "queue.Queue[Optional[tuple]]" = queue.Queue()
+        self._stop_evt = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._sock: Optional[socket.socket] = None
+        self._next_id = count(1)
 
     @property
     def volume(self) -> int:
@@ -24,9 +34,9 @@ class MpvPlayer:
 
     @volume.setter
     def volume(self, value: int):
-        self._volume = max(0, min(100, value))
-        if self.sock:
-            self._send(["set_property", "volume", self._volume])
+        value = max(0, min(100, int(value)))
+        self._volume = value
+        self._enqueue(["set_property", "volume", value])
 
     @property
     def paused(self) -> bool:
@@ -58,35 +68,20 @@ class MpvPlayer:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-
-        for _ in range(20):
-            if Path(self.sock_path).exists():
-                break
-            time.sleep(0.1)
-
-        try:
-            self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.sock.connect(self.sock_path)
-            self.sock.settimeout(0.5)
-            self._paused = False
-        except Exception:
-            self.sock = None
+        self._paused = False
+        self._start_thread()
 
     def stop(self):
-        if self.process:
+        self._stop_thread()
+        proc = self.process
+        self.process = None
+        if proc is not None and proc.poll() is None:
             try:
-                self.process.send_signal(signal.SIGTERM)
-                self.process.wait(timeout=3)
-            except Exception:
-                self.process.kill()
-            self.process = None
-        if self.sock:
-            try:
-                self.sock.close()
+                proc.terminate()
             except Exception:
                 pass
-            self.sock = None
-        if self.sock_path and Path(self.sock_path).exists():
+            threading.Thread(target=self._reap, args=(proc,), daemon=True).start()
+        if self.sock_path:
             try:
                 Path(self.sock_path).unlink()
             except Exception:
@@ -95,41 +90,158 @@ class MpvPlayer:
         self._time_pos = 0.0
         self._duration = 0.0
 
+    @staticmethod
+    def _reap(proc: subprocess.Popen):
+        try:
+            proc.wait(timeout=2)
+        except Exception:
+            pass
+        try:
+            if proc.poll() is None:
+                proc.kill()
+        except Exception:
+            pass
+
+    def _start_thread(self):
+        self._stop_thread()
+        self._stop_evt.clear()
+        self._thread = threading.Thread(target=self._io_loop, daemon=True)
+        self._thread.start()
+
+    def _stop_thread(self):
+        self._stop_evt.set()
+        thread = self._thread
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=1.0)
+        self._thread = None
+        if self._sock is not None:
+            try:
+                self._sock.close()
+            except Exception:
+                pass
+            self._sock = None
+
     def toggle_pause(self):
-        if self.sock:
-            self._send(["cycle", "pause"])
-            self._paused = not self._paused
+        self._enqueue(["cycle", "pause"])
+        self._paused = not self._paused
 
     def seek(self, seconds: float):
-        if self.sock:
-            self._send(["seek", seconds, "relative"])
+        self._enqueue(["seek", seconds, "relative"])
 
     def next_track(self):
-        if self.sock:
-            self._send(["playlist-next"])
+        self._enqueue(["playlist-next"])
 
     def previous_track(self):
-        if self.sock:
-            self._send(["playlist-prev"])
+        self._enqueue(["playlist-prev"])
 
     def poll_properties(self):
-        if not self.sock:
-            return
-        self._time_pos = self._send(["get_property", "time-pos"]) or 0.0
-        dur = self._send(["get_property", "duration"])
-        if dur:
-            self._duration = dur
+        # Values are maintained by the background thread; kept for API compat.
+        return
 
-    def _send(self, command) -> Optional[any]:
-        if not self.sock:
-            return None
+    def _enqueue(self, command: list) -> None:
+        self._cmd_queue.put((command, None))
+
+    def _io_loop(self):
+        path = self.sock_path
+        if not path:
+            return
+
+        deadline = time.time() + SOCKET_WAIT
+        while not self._stop_evt.is_set() and time.time() < deadline:
+            if Path(path).exists():
+                break
+            time.sleep(0.05)
+        if self._stop_evt.is_set() or not Path(path).exists():
+            return
+
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(RECV_TIMEOUT)
         try:
-            msg = json.dumps({"command": command}) + "\n"
-            self.sock.send(msg.encode())
-            resp = self.sock.recv(4096).decode()
-            data = json.loads(resp)
-            if "error" in data and data["error"] != "success":
-                return None
-            return data.get("data")
-        except (socket.timeout, ConnectionError, json.JSONDecodeError):
-            return None
+            sock.connect(path)
+        except Exception:
+            try:
+                sock.close()
+            except Exception:
+                pass
+            return
+        self._sock = sock
+
+        pending: dict[int, Optional[Callable]] = {}
+        buf = b""
+        last_poll = 0.0
+        try:
+            while not self._stop_evt.is_set():
+                now = time.time()
+                poll_pending = any(h is not None for h in pending.values())
+                if now - last_poll >= POLL_INTERVAL and not poll_pending:
+                    last_poll = now
+                    for prop, handler in (
+                        ("time-pos", self._on_time_pos),
+                        ("duration", self._on_duration),
+                        ("pause", self._on_pause),
+                        ("volume", self._on_volume),
+                    ):
+                        self._cmd_queue.put((["get_property", prop], handler))
+
+                while True:
+                    try:
+                        command, handler = self._cmd_queue.get_nowait()
+                    except queue.Empty:
+                        break
+                    if command is None:
+                        return
+                    req_id = next(self._next_id)
+                    pending[req_id] = handler
+                    self._send(sock, req_id, command)
+
+                try:
+                    chunk = sock.recv(4096)
+                except socket.timeout:
+                    continue
+                if chunk == b"":
+                    break
+                buf += chunk
+                while b"\n" in buf:
+                    line, _, buf = buf.partition(b"\n")
+                    self._handle_line(line, pending)
+        finally:
+            pending.clear()
+            try:
+                sock.close()
+            except Exception:
+                pass
+            self._sock = None
+
+    def _send(self, sock: socket.socket, req_id: int, command: list) -> None:
+        msg = json.dumps({"command": command, "request_id": req_id}) + "\n"
+        sock.sendall(msg.encode())
+
+    def _handle_line(self, line: bytes, pending: dict) -> None:
+        try:
+            data = json.loads(line)
+        except Exception:
+            return
+        req_id = data.get("request_id")
+        if req_id is None or req_id not in pending:
+            return
+        handler = pending.pop(req_id)
+        if handler is not None:
+            try:
+                handler(data.get("data"))
+            except Exception:
+                pass
+
+    def _on_time_pos(self, value):
+        self._time_pos = float(value) if value is not None else 0.0
+
+    def _on_duration(self, value):
+        if value:
+            self._duration = float(value)
+
+    def _on_pause(self, value):
+        if value is not None:
+            self._paused = bool(value)
+
+    def _on_volume(self, value):
+        if value is not None:
+            self._volume = int(value)

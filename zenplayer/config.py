@@ -6,8 +6,7 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 
 DEFAULT_CONFIG = {
     "volume": 50,
-    "visualizer_bands": 24,
-    "visualizer_fps": 30,
+    "reactive_fps": 24,
 }
 
 

@@ -9,6 +9,7 @@ class AudioCapture:
         self.chunk = chunk
         self._proc = None
         self._buffer = np.zeros(chunk, dtype=np.float32)
+        self._window = np.hanning(chunk)
         self._running = False
         self._thread = None
         self._source = None
@@ -71,23 +72,28 @@ class AudioCapture:
                 break
 
     def get_fft(self) -> np.ndarray:
-        windowed = self._buffer * np.hanning(self.chunk)
+        windowed = self._buffer * self._window
         spectrum = np.abs(np.fft.rfft(windowed))
         return spectrum
 
     def stop(self):
         self._running = False
+        proc = self._proc
+        if proc is not None:
+            try:
+                proc.terminate()
+            except Exception:
+                pass
         if self._thread:
             self._thread.join(timeout=1)
             self._thread = None
-        if self._proc:
+        if proc is not None:
             try:
-                self._proc.terminate()
-                self._proc.wait(timeout=2)
+                proc.wait(timeout=1)
             except Exception:
                 try:
-                    self._proc.kill()
+                    proc.kill()
                 except Exception:
                     pass
-            self._proc = None
+        self._proc = None
         self._buffer.fill(0.0)

@@ -1,5 +1,6 @@
 from textual import work
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Footer, Input, Label
@@ -14,10 +15,14 @@ from zenplayer.widgets.now_playing import NowPlayingOverlay
 from zenplayer.widgets.queue_view import QueueView
 from zenplayer.widgets.search_preview import SearchPreview
 from zenplayer.widgets.search_results import SearchResults
+from zenplayer.widgets.zen_now_playing import ZenNowPlaying
 
 
 class PlayerScreen(Screen):
     AUTO_FOCUS = "#player-search"
+    BINDINGS = [
+        Binding("f1", "toggle_zen", "Zen Mode"),
+    ]
 
     def __init__(self, volume: int = 50, **kwargs):
         super().__init__(**kwargs)
@@ -36,12 +41,16 @@ class PlayerScreen(Screen):
                     yield NowPlayingOverlay()
             yield QueueView()
             yield Controls(volume=self._volume)
+            yield ZenNowPlaying()
             yield Footer()
 
     def on_mount(self):
         self._art_track = None
         self._current_query = ""
         self.set_interval(0.5, self._update_controls)
+
+    def action_toggle_zen(self):
+        self.set_class(not self.has_class("zen"), "zen")
 
     def _update_controls(self):
         if self.app.screen is not self:
@@ -74,6 +83,18 @@ class PlayerScreen(Screen):
 
         queue_view = self.query_one(QueueView)
         queue_view.set_queue(app.queue)
+
+        # Update zen mode widget
+        try:
+            zen = self.query_one(ZenNowPlaying)
+            zen.update_state(
+                app.current_track,
+                app.player.paused,
+                app.player.time_pos,
+                app.player.duration,
+            )
+        except Exception:
+            pass
 
     def on_input_submitted(self, event: Input.Submitted):
         query = event.value.strip()

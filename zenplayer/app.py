@@ -50,6 +50,61 @@ Footer {
     height: 1;
 }
 
+ZenNowPlaying { display: none; }
+
+/* Zen mode: hide everything, show only ZenNowPlaying */
+Screen.zen #main-area,
+Screen.zen QueueView,
+Screen.zen Controls,
+Screen.zen Footer { display: none; }
+
+Screen.zen ZenNowPlaying { display: block; }
+
+ZenNowPlaying {
+    align: center middle;
+    height: 1fr;
+}
+
+#zen-info {
+    align: center middle;
+    height: auto;
+}
+
+#zen-title {
+    color: #c0c0c0;
+    text-style: bold;
+    text-align: center;
+    width: auto;
+}
+
+#zen-artist {
+    color: #555555;
+    text-align: center;
+    width: auto;
+}
+
+#zen-progress {
+    color: #555555;
+    text-align: center;
+    width: auto;
+}
+
+#zen-controls {
+    align: center middle;
+}
+
+.zen-btn {
+    background: transparent;
+    border: solid transparent;
+    padding: 0 1;
+    min-width: 0;
+    height: auto;
+}
+
+.zen-btn:hover {
+    background: #1a1a1a;
+}
+
 #player-panel {
     width: 60%;
     layers: art overlay;

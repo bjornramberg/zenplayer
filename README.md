@@ -50,9 +50,14 @@ Keyboard shortcuts (also shown in the footer):
 | `→` / `←` | Seek forward / backward 5s |
 | `+` / `-` | Volume up / down |
 | `n` / `p` | Next / Previous track |
+| `f1` | Toggle zen mode |
 | `q` | Quit |
 
 The play/pause, next, and previous buttons in the controls bar are also clickable.
+
+### Zen mode
+
+Press `f1` to toggle zen mode — a minimal, visually dampened view that hides the search panel, album art, queue, and controls bar. Only the track title, artist, duration, and prev/play/next buttons are shown. Press `f1` again to return to the full view.
 
 ## Architecture
 

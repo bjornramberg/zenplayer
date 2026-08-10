@@ -13,13 +13,13 @@ from zenplayer.widgets.album_art import AlbumArt
 from zenplayer.widgets.controls import Controls
 from zenplayer.widgets.now_playing import NowPlayingOverlay
 from zenplayer.widgets.queue_view import QueueView
+from zenplayer.widgets.resume_prompt import ResumePrompt
 from zenplayer.widgets.search_preview import SearchPreview
 from zenplayer.widgets.search_results import SearchResults
 from zenplayer.widgets.zen_now_playing import ZenNowPlaying
 
 
 class PlayerScreen(Screen):
-    AUTO_FOCUS = "#player-search"
     BINDINGS = [
         Binding("f1", "toggle_zen", "Zen Mode"),
     ]
@@ -33,6 +33,7 @@ class PlayerScreen(Screen):
             with Horizontal(id="main-area"):
                 with Vertical(id="search-panel"):
                     yield Label("  Search", id="search-panel-header")
+                    yield ResumePrompt()
                     yield Input(placeholder="Search...", id="player-search")
                     yield SearchResults()
                     yield SearchPreview()
@@ -48,6 +49,18 @@ class PlayerScreen(Screen):
         self._art_track = None
         self._current_query = ""
         self.set_interval(0.5, self._update_controls)
+        if self.app.config.get("last_track"):
+            try:
+                prompt = self.query_one(ResumePrompt)
+                prompt.show()
+                self.set_timer(0.1, lambda: prompt.focus())
+            except Exception:
+                pass
+        else:
+            try:
+                self.query_one("#player-search").focus()
+            except Exception:
+                pass
 
     def action_toggle_zen(self):
         self.set_class(not self.has_class("zen"), "zen")

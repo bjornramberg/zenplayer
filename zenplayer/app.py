@@ -48,6 +48,13 @@ Screen {
     height: 1;
 }
 
+ResumePrompt {
+    dock: top;
+    height: 3;
+    align: center middle;
+    padding: 0 1;
+}
+
 Footer {
     height: 1;
 }
@@ -292,7 +299,7 @@ class ZenPlayer(App):
         self.set_interval(self._bass_interval, self._reactive_tick)
         self.set_interval(0.5, self._repaint_if_dropped)
         if self.config.get("last_track"):
-            self.notify("Press r to resume where you left off", timeout=8)
+            pass  # ResumePrompt will show on mount
 
     def _repaint_if_dropped(self):
         if nonblocking_output.full():
@@ -389,6 +396,12 @@ class ZenPlayer(App):
         del self.config["last_position"]
         save_config(self.config)
         self.notify("Resumed from last session")
+        try:
+            prompt = self.screen.query_one("ResumePrompt")
+            prompt.hide()
+        except Exception:
+            pass
+        self.set_timer(0.05, lambda: self.screen.query_one("#player-search").focus())
 
     def action_focus_search(self) -> None:
         if self.screen is not None and hasattr(self.screen, "query_one"):

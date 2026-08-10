@@ -13,6 +13,9 @@ A terminal-based YouTube Music client with an album-art now-playing display.
 - **Debounced, cached search** — async results with a 5-minute cache TTL and 300 ms debounce; result depth is configurable via `search_limit` (default 30)
 - **Search preview** — arrow through results to see a square thumbnail and word-wrapped description (title, artist, duration, YouTube description) in the sidebar
 - **Volume persistence** — volume changes are saved to the config file
+- **History** — last played tracks stored with playback position; browse, play, remove, or clear entries
+- **Session persistence** — quitting saves the current track + position (−10s); on restart, press `r` to resume where you left off
+- **Zen mode** — minimal, visually dampened full-screen view with just title, artist, and basic controls
 - **Stall-resistant output** — a non-blocking terminal writer with drop detection that self-recovers on slow terminals
 
 ## Requirements
@@ -50,6 +53,8 @@ Keyboard shortcuts (also shown in the footer):
 | `→` / `←` | Seek forward / backward 5s |
 | `+` / `-` | Volume up / down |
 | `n` / `p` | Next / Previous track |
+| `h` | Toggle history screen |
+| `r` | Resume last session |
 | `f1` | Toggle zen mode |
 | `q` | Quit |
 
@@ -58,6 +63,21 @@ The play/pause, next, and previous buttons in the controls bar are also clickabl
 ### Zen mode
 
 Press `f1` to toggle zen mode — a minimal, visually dampened view that hides the search panel, album art, queue, and controls bar. Only the track title, artist, duration, and prev/play/next buttons are shown. Press `f1` again to return to the full view.
+
+### History
+
+Press `h` to open the history screen — a full-screen overlay showing all previously played tracks (newest first). Select a track and press `enter` to play it from where you last left off.
+
+| Key | Action |
+|---|---|
+| `enter` | Play selected track |
+| `backspace` / `delete` | Remove selected entry |
+| `ctrl+x` | Clear all history |
+| `escape` | Close history |
+
+### Session persistence
+
+When you quit the app (`q`), the current track and playback position (−10s) are saved. On the next startup, a notification appears: "Press r to resume where you left off". Press `r` to continue from the saved position.
 
 ## Architecture
 
@@ -73,18 +93,21 @@ zenplayer/
 │   ├── player.py       # mpv subprocess manager (IPC over Unix socket)
 │   └── extractor.py    # yt-dlp search + TrackInfo dataclass
 ├── screens/
-│   ├── player_screen.py  # Main player layout (album art + controls + search sidebar)
-│   └── search_screen.py  # Full-screen search overlay
+│   ├── player_screen.py   # Main player layout (album art + controls + search sidebar)
+│   ├── search_screen.py   # Full-screen search overlay
+│   └── history_screen.py  # Full-screen history overlay
 ├── widgets/
 │   ├── _art.py             # Shared half-block render helpers (quantize, run-merge)
 │   ├── album_art.py        # AlbumArt — full-panel truecolor art (quantized, run-merged)
 │   ├── search_preview.py   # SearchPreview — square thumbnail + description on highlight
 │   ├── now_playing.py      # NowPlayingOverlay — title/artist/progress + bass glow
+│   ├── zen_now_playing.py  # ZenNowPlaying — minimal centered view for zen mode
 │   ├── controls.py         # Playback controls bar
 │   ├── queue_view.py       # Current playlist queue
 │   └── search_results.py   # Search result list items
 └── utils/
     ├── cache.py          # Search result disk cache with TTL
+    ├── history.py        # Play history persistence with positions
     ├── thumbnail.py      # Thumbnail fetch + disk cache
     └── format.py         # Duration formatting helpers
 ```
@@ -105,13 +128,15 @@ zenplayer/
 {
   "volume": 50,
   "reactive_fps": 24,
-  "search_limit": 30
+  "search_limit": 30,
+  "history_limit": 100
 }
 ```
 
 - `volume` — initial volume (0–100); also updated when you change it in-app
 - `reactive_fps` — how often the bass analysis runs and the glow updates (default 24)
 - `search_limit` — how many results each search fetches (default 30)
+- `history_limit` — max entries stored in play history (default 100)
 
 ## License
 

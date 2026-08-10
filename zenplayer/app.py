@@ -9,8 +9,10 @@ from zenplayer.audio.extractor import TrackInfo
 from zenplayer.audio.player import MpvPlayer
 from zenplayer import diagnostics, nonblocking_output
 from zenplayer.config import load_config, save_config
+from zenplayer.screens.history_screen import HistoryScreen
 from zenplayer.screens.player_screen import PlayerScreen
 from zenplayer.screens.search_screen import SearchScreen
+from zenplayer.utils.history import add_to_history, update_history_position
 from zenplayer.widgets.album_art import AlbumArt
 from zenplayer.widgets.now_playing import NowPlayingOverlay
 
@@ -220,6 +222,13 @@ ListItem > Label {
     padding: 1 1;
 }
 
+#history-header {
+    color: #555555;
+    text-style: bold;
+    padding: 1 1;
+    dock: top;
+}
+
 #search-input {
     background: #111111;
     color: #c0c0c0;
@@ -251,6 +260,8 @@ class ZenPlayer(App):
         Binding("-", "volume_down", "Vol Down"),
         Binding("n", "next_track", "Next"),
         Binding("p", "previous_track", "Prev"),
+        Binding("h", "toggle_history", "History"),
+        Binding("r", "resume_session", "Resume"),
         Binding("q", "quit", "Quit"),
     ]
 
@@ -274,11 +285,14 @@ class ZenPlayer(App):
             name="player",
         )
         self.install_screen(SearchScreen(name="search"), name="search")
+        self.install_screen(HistoryScreen(name="history"), name="history")
         self.push_screen("player")
         fps = int(self.config.get("reactive_fps", 24))
         self._bass_interval = 1.0 / max(1, fps)
         self.set_interval(self._bass_interval, self._reactive_tick)
         self.set_interval(0.5, self._repaint_if_dropped)
+        if self.config.get("last_track"):
+            self.notify("Press r to resume where you left off", timeout=8)
 
     def _repaint_if_dropped(self):
         if nonblocking_output.full():
@@ -356,6 +370,26 @@ class ZenPlayer(App):
         else:
             self.pop_screen()
 
+    def action_toggle_history(self) -> None:
+        if self.screen is not None and self.screen.name == "history":
+            self.pop_screen()
+        else:
+            self.push_screen("history")
+
+    def action_resume_session(self) -> None:
+        track_dict = self.config.get("last_track")
+        if not track_dict:
+            self.notify("No saved session", severity="warning")
+            return
+        track = self._track_from_dict(track_dict)
+        position = self.config.get("last_position", 0)
+        self.play_track(track)
+        self.set_timer(1.5, lambda: self.player.seek(position))
+        del self.config["last_track"]
+        del self.config["last_position"]
+        save_config(self.config)
+        self.notify("Resumed from last session")
+
     def action_focus_search(self) -> None:
         if self.screen is not None and hasattr(self.screen, "query_one"):
             try:
@@ -398,9 +432,12 @@ class ZenPlayer(App):
         self.player.previous_track()
 
     def play_track(self, track: TrackInfo) -> None:
+        if self.current_track and self.player.time_pos > 0:
+            update_history_position(self.current_track.id, self.player.time_pos)
         self.current_track = track
         if track not in self.queue:
             self.queue.insert(0, track)
+        add_to_history(track, int(self.config.get("history_limit", 100)))
 
         try:
             self.player.start(track.url)
@@ -408,6 +445,14 @@ class ZenPlayer(App):
             self.notify("Failed to play track", severity="error")
 
     def action_quit(self) -> None:
+        if self.current_track and self.player.time_pos > 0:
+            update_history_position(self.current_track.id, self.player.time_pos)
+            self.config["last_track"] = self._track_to_dict(self.current_track)
+            self.config["last_position"] = max(0, self.player.time_pos - 10)
+            try:
+                save_config(self.config)
+            except Exception:
+                pass
         t0 = time.monotonic()
         self.player.stop()
         t1 = time.monotonic()
@@ -430,3 +475,14 @@ class ZenPlayer(App):
             thumbnail=data.get("thumbnail"),
             description=data.get("description", ""),
         )
+
+    def _track_to_dict(self, track: TrackInfo) -> dict:
+        return {
+            "id": track.id,
+            "title": track.title or "Unknown",
+            "artist": track.artist or "Unknown",
+            "duration": track.duration,
+            "url": track.url,
+            "thumbnail": getattr(track, "thumbnail", None),
+            "description": getattr(track, "description", ""),
+        }

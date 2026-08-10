@@ -8,6 +8,7 @@ DEFAULT_CONFIG = {
     "volume": 50,
     "reactive_fps": 24,
     "search_limit": 30,
+    "history_limit": 100,
 }
 
 

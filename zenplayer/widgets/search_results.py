@@ -6,16 +6,22 @@ from zenplayer.utils.format import format_duration
 
 
 class SearchResultItem(ListItem):
-    def __init__(self, track, *args, **kwargs):
+    def __init__(self, track, position=0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.track = track
+        self.position = position
 
     def compose(self) -> ComposeResult:
         title = self.track.title or "Unknown"
         artist = self.track.artist or "Unknown"
         duration = format_duration(self.track.duration)
-        yield Label(f"{title}")
-        yield Label(f"{artist}  {duration}", classes="result-meta")
+        if self.position > 0:
+            pos = format_duration(self.position)
+            yield Label(f"{title}")
+            yield Label(f"{artist}  {pos} / {duration}", classes="result-meta")
+        else:
+            yield Label(f"{title}")
+            yield Label(f"{artist}  {duration}", classes="result-meta")
 
 
 class SearchResults(Vertical):
@@ -27,11 +33,12 @@ class SearchResults(Vertical):
     def compose(self) -> ComposeResult:
         yield self.list_view
 
-    def set_results(self, tracks: list, autofocus: bool = False) -> None:
+    def set_results(self, tracks: list, autofocus: bool = False, positions: list | None = None) -> None:
         self._results = tracks
         self.list_view.clear()
-        for track in tracks:
-            self.list_view.append(SearchResultItem(track))
+        for i, track in enumerate(tracks):
+            pos = positions[i] if positions and i < len(positions) else 0
+            self.list_view.append(SearchResultItem(track, position=pos))
         if autofocus and tracks:
             self.list_view.focus()
 

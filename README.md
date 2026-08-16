@@ -26,11 +26,18 @@ A terminal-based YouTube Music client with an album-art now-playing display.
 
 ## Install
 
+### From PyPI
+
+```bash
+pip install zenplayer
+```
+
+### From source
+
 ```bash
 git clone https://github.com/bjornramberg/zenplayer.git
 cd zenplayer
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
+pip install .
 ```
 
 ## Usage

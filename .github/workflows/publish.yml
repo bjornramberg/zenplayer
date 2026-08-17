@@ -19,6 +19,8 @@ jobs:
         run: |
           sed -i "s/^version = .*/version = \"${{ steps.version.outputs.VERSION }}\"/" pyproject.toml
           sed -i "s/^__version__ = .*/__version__ = \"${{ steps.version.outputs.VERSION }}\"/" zenplayer/__init__.py
+      - run: pip install -e ".[dev]"
+      - run: pytest -v
       - run: pip install build
       - run: python -m build
       - uses: actions/upload-artifact@v4

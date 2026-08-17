@@ -9,8 +9,11 @@ CACHE_TTL = 300
 
 def load_cache() -> dict:
     if CACHE_FILE.exists():
-        with open(CACHE_FILE) as f:
-            return json.load(f)
+        try:
+            with open(CACHE_FILE) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            pass
     return {}
 
 

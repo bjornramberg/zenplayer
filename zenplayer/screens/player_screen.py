@@ -134,8 +134,8 @@ class PlayerScreen(Screen):
             ]
             set_cached(query, results, limit)
             self._post(self._apply_results, query, tracks)
-        except Exception:
-            pass
+        except Exception as e:
+            self._post(self._apply_error, query, str(e))
 
     def _post(self, callback, *args):
         try:
@@ -148,6 +148,11 @@ class PlayerScreen(Screen):
             return
         results_widget = self.query_one(SearchResults)
         results_widget.set_results(tracks, autofocus=True)
+
+    def _apply_error(self, query: str, error: str):
+        if not self.is_mounted or query != self._current_query:
+            return
+        self.app.notify(f"Search failed: {error}", severity="error", timeout=5)
 
     def on_list_view_selected(self, event: ListView.Selected):
         item = event.item

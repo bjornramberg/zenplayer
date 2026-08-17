@@ -14,8 +14,11 @@ DEFAULT_CONFIG = {
 
 def load_config() -> dict:
     if CONFIG_FILE.exists():
-        with open(CONFIG_FILE) as f:
-            return {**DEFAULT_CONFIG, **json.load(f)}
+        try:
+            with open(CONFIG_FILE) as f:
+                return {**DEFAULT_CONFIG, **json.load(f)}
+        except (json.JSONDecodeError, OSError):
+            pass
     return DEFAULT_CONFIG.copy()
 
 

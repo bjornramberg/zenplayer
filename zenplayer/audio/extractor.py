@@ -22,6 +22,7 @@ def search(query: str, limit: int = 10) -> list[TrackInfo]:
         "no_warnings": True,
         "extract_flat": True,
         "force_generic_extractor": False,
+        "socket_timeout": 10,
     }
     with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(f"ytsearch{limit}:{query}", download=False)

@@ -257,19 +257,23 @@ class ZenPlayer(App):
     ENABLE_COMMAND_PALETTE = False
 
     BINDINGS: list[BindingType] = [
-        Binding("ctrl+p", "toggle_screen", "Toggle Screen"),
-        Binding("ctrl+f", "focus_search", "Search"),
-        Binding("/", "focus_search", "Search"),
         Binding("space", "play_pause", "Play/Pause"),
         Binding("right", "seek_forward", "Forward"),
         Binding("left", "seek_backward", "Backward"),
+        Binding("shift+right", "seek_forward_large", "Forward 30s"),
+        Binding("shift+left", "seek_backward_large", "Backward 30s"),
         Binding("+", "volume_up", "Vol Up"),
         Binding("-", "volume_down", "Vol Down"),
-        Binding("n", "next_track", "Next"),
-        Binding("p", "previous_track", "Prev"),
+        Binding("shift++", "volume_up_large", "Vol Up 15%"),
+        Binding("shift+-", "volume_down_large", "Vol Down 15%"),
+        Binding("j", "next_track", "Next"),
+        Binding("k", "previous_track", "Prev"),
+        Binding("f", "focus_search", "Search"),
+        Binding("/", "focus_search", "Search"),
         Binding("h", "toggle_history", "History"),
         Binding("r", "resume_session", "Resume"),
         Binding("q", "quit", "Quit"),
+        Binding("escape", "unfocus", "Back"),
     ]
 
     def __init__(self):
@@ -415,20 +419,43 @@ class ZenPlayer(App):
                 except Exception:
                     pass
 
+    def action_unfocus(self) -> None:
+        if self.screen is not None and hasattr(self.screen, "query_one"):
+            try:
+                self.screen.query_one("#player-search").blur()
+            except Exception:
+                pass
+            try:
+                self.screen.query_one("#search-input").blur()
+            except Exception:
+                pass
+
     def action_play_pause(self) -> None:
         self.player.toggle_pause()
 
     def action_seek_forward(self) -> None:
         self.player.seek(5)
 
+    def action_seek_forward_large(self) -> None:
+        self.player.seek(30)
+
     def action_seek_backward(self) -> None:
         self.player.seek(-5)
+
+    def action_seek_backward_large(self) -> None:
+        self.player.seek(-30)
 
     def action_volume_up(self) -> None:
         self._set_volume(min(100, self.player.volume + 5))
 
+    def action_volume_up_large(self) -> None:
+        self._set_volume(min(100, self.player.volume + 15))
+
     def action_volume_down(self) -> None:
         self._set_volume(max(0, self.player.volume - 5))
+
+    def action_volume_down_large(self) -> None:
+        self._set_volume(max(0, self.player.volume - 15))
 
     def _set_volume(self, value: int) -> None:
         self.player.volume = value

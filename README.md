@@ -81,15 +81,17 @@ Global (all screens):
 
 | Key | Action |
 |---|---|
-| `ctrl+p` | Toggle player / search screen |
-| `ctrl+f` or `/` | Focus search input |
 | `space` | Play / Pause |
 | `→` / `←` | Seek forward / backward 5s |
+| `shift+→` / `shift+←` | Seek forward / backward 30s |
 | `+` / `-` | Volume up / down (5% steps) |
-| `n` / `p` | Next / Previous track |
+| `shift++` / `shift+-` | Volume up / down (15% steps) |
+| `j` / `k` | Next / Previous track |
+| `f` or `/` | Focus search input |
 | `h` | Toggle history screen |
 | `r` | Resume last session |
 | `q` | Quit |
+| `escape` | Unfocus search / Close overlays |
 
 Player screen:
 
@@ -103,7 +105,7 @@ History screen:
 |---|---|
 | `enter` | Play selected track (resumes from saved position) |
 | `backspace` / `delete` | Remove selected entry |
-| `ctrl+x` | Clear all history |
+| `ctrl+u` | Clear all history |
 | `escape` | Close history |
 
 ### Zen mode

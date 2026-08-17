@@ -14,7 +14,7 @@ class HistoryScreen(Screen):
         Binding("escape", "pop_screen", "Close"),
         Binding("backspace", "remove_entry", "Remove"),
         Binding("delete", "remove_entry", "Remove"),
-        Binding("ctrl+x", "clear_all", "Clear All"),
+        Binding("ctrl+u", "clear_all", "Clear All"),
     ]
 
     def compose(self) -> ComposeResult:

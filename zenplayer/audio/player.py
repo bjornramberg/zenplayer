@@ -18,6 +18,7 @@ class MpvPlayer:
     def __init__(self, volume: int = 50):
         self.process: Optional[subprocess.Popen] = None
         self.sock_path: Optional[str] = None
+        self._lock = threading.Lock()
         self._volume = volume
         self._paused = True
         self._duration = 0.0
@@ -30,25 +31,30 @@ class MpvPlayer:
 
     @property
     def volume(self) -> int:
-        return self._volume
+        with self._lock:
+            return self._volume
 
     @volume.setter
     def volume(self, value: int):
         value = max(0, min(100, int(value)))
-        self._volume = value
+        with self._lock:
+            self._volume = value
         self._enqueue(["set_property", "volume", value])
 
     @property
     def paused(self) -> bool:
-        return self._paused
+        with self._lock:
+            return self._paused
 
     @property
     def duration(self) -> float:
-        return self._duration
+        with self._lock:
+            return self._duration
 
     @property
     def time_pos(self) -> float:
-        return self._time_pos
+        with self._lock:
+            return self._time_pos
 
     def start(self, url: str):
         self.stop()
@@ -68,7 +74,8 @@ class MpvPlayer:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        self._paused = False
+        with self._lock:
+            self._paused = False
         self._start_thread()
 
     def stop(self):
@@ -86,9 +93,10 @@ class MpvPlayer:
                 Path(self.sock_path).unlink()
             except Exception:
                 pass
-        self._paused = True
-        self._time_pos = 0.0
-        self._duration = 0.0
+        with self._lock:
+            self._paused = True
+            self._time_pos = 0.0
+            self._duration = 0.0
 
     @staticmethod
     def _reap(proc: subprocess.Popen):
@@ -123,7 +131,6 @@ class MpvPlayer:
 
     def toggle_pause(self):
         self._enqueue(["cycle", "pause"])
-        self._paused = not self._paused
 
     def seek(self, seconds: float):
         self._enqueue(["seek", seconds, "relative"])
@@ -232,16 +239,20 @@ class MpvPlayer:
                 pass
 
     def _on_time_pos(self, value):
-        self._time_pos = float(value) if value is not None else 0.0
+        with self._lock:
+            self._time_pos = float(value) if value is not None else 0.0
 
     def _on_duration(self, value):
         if value:
-            self._duration = float(value)
+            with self._lock:
+                self._duration = float(value)
 
     def _on_pause(self, value):
         if value is not None:
-            self._paused = bool(value)
+            with self._lock:
+                self._paused = bool(value)
 
     def _on_volume(self, value):
         if value is not None:
-            self._volume = int(value)
+            with self._lock:
+                self._volume = int(value)

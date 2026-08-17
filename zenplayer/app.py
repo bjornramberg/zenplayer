@@ -395,17 +395,34 @@ class ZenPlayer(App):
         track = self._track_from_dict(track_dict)
         position = self.config.get("last_position", 0)
         self.play_track(track)
-        self.set_timer(1.5, lambda: self.player.seek(position))
+        self._resume_position = position
+        self._resume_attempts = 0
+        self._resume_timer = self.set_interval(0.5, self._poll_for_resume)
         del self.config["last_track"]
         del self.config["last_position"]
         save_config(self.config)
-        self.notify("Resumed from last session")
         try:
             prompt = self.screen.query_one("ResumePrompt")
             prompt.hide()
         except Exception:
             pass
         self.set_timer(0.05, lambda: self.screen.query_one("#player-search").focus())
+
+    def _poll_for_resume(self) -> None:
+        """Wait for mpv to start playing, then seek to saved position."""
+        self._resume_attempts += 1
+        time_pos = self.player.time_pos
+
+        if time_pos > 0:
+            self.player.seek_to(self._resume_position)
+            self.notify("Resumed from last session")
+            self._resume_timer.stop()
+            return
+
+        if self._resume_attempts > 20:
+            self.player.seek_to(self._resume_position)
+            self.notify("Resume timed out — seeked to saved position", severity="warning")
+            self._resume_timer.stop()
 
     def action_focus_search(self) -> None:
         if self.screen is not None and hasattr(self.screen, "query_one"):

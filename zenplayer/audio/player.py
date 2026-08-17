@@ -135,6 +135,10 @@ class MpvPlayer:
     def seek(self, seconds: float):
         self._enqueue(["seek", seconds, "relative"])
 
+    def seek_to(self, position: float):
+        """Seek to an absolute position in seconds."""
+        self._enqueue(["seek", max(0, position), "absolute"])
+
     def next_track(self):
         self._enqueue(["playlist-next"])
 
@@ -172,6 +176,9 @@ class MpvPlayer:
                 pass
             return
         self._sock = sock
+
+        # Ensure mpv is not paused after IPC connects
+        self._cmd_queue.put((["set_property", "pause", False], None))
 
         pending: dict[int, Optional[Callable]] = {}
         buf = b""

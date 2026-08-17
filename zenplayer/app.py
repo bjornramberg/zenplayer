@@ -421,9 +421,22 @@ class ZenPlayer(App):
             self._resume_timer.stop()
             return
 
+        if self.player.process is None:
+            self._resume_timer.stop()
+            self.notify("Couldn't resume — playback interrupted", severity="error")
+            return
+
         if self._resume_attempts > 20:
+            diag = self.player.get_diagnostics()
+            log = self.player.log_path
+            if diag.get("paused-for-cache"):
+                msg = f"Resume is still loading — buffering the track\n(Log: {log})"
+            elif diag.get("idle-active"):
+                msg = f"Couldn't resume — track failed to load\n(Log: {log})"
+            else:
+                msg = f"Couldn't resume — try playing the track again\n(Log: {log})"
             self.player.seek_to(self._resume_position)
-            self.notify("Resume timed out — seeked to saved position", severity="warning")
+            self.notify(msg, severity="warning", timeout=10)
             self._resume_timer.stop()
 
     def action_focus_search(self) -> None:
@@ -517,12 +530,26 @@ class ZenPlayer(App):
             return
         if self.player.process is None:
             self._stop_playback_monitor()
-            self.notify("Playback failed — mpv exited", severity="error")
+            self.notify("Playback interrupted — try playing again", severity="error")
             return
         self._playback_check_count += 1
         if self._playback_check_count >= 5:
+            diag = self.player.get_diagnostics()
+            msg = self._diagnose_playback_failure(diag)
             self._stop_playback_monitor()
-            self.notify("Playback may have failed — track stuck at 0:00", severity="warning")
+            self.notify(msg, severity="warning", timeout=10)
+
+    def _diagnose_playback_failure(self, diag: dict) -> str:
+        log = self.player.log_path
+        if diag.get("paused-for-cache"):
+            return f"Still loading — buffering the track\n(Log: {log})"
+        if diag.get("idle-active"):
+            return f"Couldn't load this track — check your connection\n(Log: {log})"
+        if diag.get("eof-reached"):
+            return f"This track isn't available — it may be restricted\n(Log: {log})"
+        if diag.get("duration", 0) == 0:
+            return f"Track failed to load — try another one\n(Log: {log})"
+        return f"Something went wrong — try again\n(Log: {log})"
 
     def _stop_playback_monitor(self) -> None:
         if self._playback_monitor is not None:

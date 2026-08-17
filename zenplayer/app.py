@@ -281,6 +281,13 @@ class ZenPlayer(App):
         self.config = load_config()
         self.player = MpvPlayer(volume=int(self.config.get("volume", 50)))
         self.analyzer = AudioAnalyzer()
+        # Clear mpv log from previous session
+        try:
+            from zenplayer.audio.player import MPV_LOG_FILE
+            if MPV_LOG_FILE.exists():
+                MPV_LOG_FILE.unlink()
+        except Exception:
+            pass
         self._bass_smooth = 0.0
         self._bass_trail = 0.0
         self._bass_peak = 1e-6
@@ -512,11 +519,13 @@ class ZenPlayer(App):
         add_to_history(track, int(self.config.get("history_limit", 100)))
 
         self._stop_playback_monitor()
+        self._playback_track = track
+        self._playback_retry = True
 
         try:
             self.player.start(track.url)
         except Exception:
-            self.notify("Failed to play track", severity="error")
+            self.notify("Playback failed — try again", severity="error")
             return
 
         self._playback_monitor = self.set_interval(1.0, self._check_playback_started)
@@ -527,17 +536,45 @@ class ZenPlayer(App):
             return
         if self.player.time_pos > 0:
             self._stop_playback_monitor()
+            self._cleanup_log_on_success()
             return
         if self.player.process is None:
             self._stop_playback_monitor()
-            self.notify("Playback interrupted — try playing again", severity="error")
+            if self._playback_retry:
+                self._retry_playback()
+            else:
+                self.notify("Playback interrupted — try playing again", severity="error")
             return
         self._playback_check_count += 1
         if self._playback_check_count >= 5:
             diag = self.player.get_diagnostics()
-            msg = self._diagnose_playback_failure(diag)
-            self._stop_playback_monitor()
-            self.notify(msg, severity="warning", timeout=10)
+            if self._playback_retry and self._should_retry(diag):
+                self._retry_playback()
+            else:
+                msg = self._diagnose_playback_failure(diag)
+                self._stop_playback_monitor()
+                self.notify(msg, severity="warning", timeout=10)
+
+    def _should_retry(self, diag: dict) -> bool:
+        """Only retry for transient errors, not permanent ones."""
+        if diag.get("eof-reached"):
+            return False
+        return True
+
+    def _retry_playback(self) -> None:
+        """Retry playback once with a short delay."""
+        self._stop_playback_monitor()
+        self._playback_retry = False
+        self.notify("Retrying...", severity="info", timeout=2)
+        self.set_timer(1.0, self._do_retry)
+
+    def _do_retry(self) -> None:
+        try:
+            self.player.start(self._playback_track.url)
+        except Exception:
+            self.notify("Playback failed — try again", severity="error")
+            return
+        self._playback_monitor = self.set_interval(1.0, self._check_playback_started)
 
     def _diagnose_playback_failure(self, diag: dict) -> str:
         log = self.player.log_path
@@ -556,6 +593,15 @@ class ZenPlayer(App):
             self._playback_monitor.stop()
             self._playback_monitor = None
         self._playback_check_count = 0
+
+    def _cleanup_log_on_success(self) -> None:
+        """Delete mpv log when playback starts successfully."""
+        try:
+            from zenplayer.audio.player import MPV_LOG_FILE
+            if MPV_LOG_FILE.exists():
+                MPV_LOG_FILE.unlink()
+        except Exception:
+            pass
 
     def action_quit(self) -> None:
         self._stop_playback_monitor()

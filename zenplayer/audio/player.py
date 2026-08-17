@@ -13,8 +13,8 @@ POLL_INTERVAL = 0.25
 SOCKET_WAIT = 5.0
 RECV_TIMEOUT = 0.25
 
-LOG_DIR = Path.home() / ".cache" / "zenplayer"
-MPV_LOG_FILE = LOG_DIR / "mpv.log"
+MPV_LOG_DIR = Path.home() / ".cache" / "zenplayer"
+MPV_LOG_FILE = MPV_LOG_DIR / "mpv.log"
 
 
 class MpvPlayer:
@@ -31,39 +31,25 @@ class MpvPlayer:
         self._thread: Optional[threading.Thread] = None
         self._sock: Optional[socket.socket] = None
         self._next_id = count(1)
+        # Diagnostic state (polled by IO loop)
+        self._idle = True
+        self._core_idle = True
+        self._paused_for_cache = False
+        self._eof_reached = False
 
     @property
     def log_path(self) -> str:
         return str(MPV_LOG_FILE)
 
     def get_diagnostics(self) -> dict:
-        """Query mpv properties useful for diagnosing playback failures."""
-        if self._sock is None:
-            return {}
-        props = {}
-        for prop in ("idle-active", "core-idle", "paused-for-cache",
-                     "eof-reached", "duration", "audio-codec"):
-            try:
-                req_id = next(self._next_id)
-                msg = json.dumps({"command": ["get_property", prop], "request_id": req_id}) + "\n"
-                self._sock.sendall(msg.encode())
-                # Read response with short timeout
-                old_timeout = self._sock.gettimeout()
-                self._sock.settimeout(0.5)
-                try:
-                    data = self._sock.recv(4096)
-                    for line in data.decode().splitlines():
-                        resp = json.loads(line)
-                        if resp.get("request_id") == req_id:
-                            props[prop] = resp.get("data")
-                            break
-                except (socket.timeout, OSError):
-                    pass
-                finally:
-                    self._sock.settimeout(old_timeout)
-            except Exception:
-                pass
-        return props
+        """Return diagnostic state polled by the IO loop (thread-safe)."""
+        with self._lock:
+            return {
+                "idle-active": self._idle,
+                "paused-for-cache": self._paused_for_cache,
+                "eof-reached": self._eof_reached,
+                "duration": self._duration,
+            }
 
     @property
     def volume(self) -> int:
@@ -96,20 +82,19 @@ class MpvPlayer:
         self.stop()
         self.sock_path = f"/tmp/zenplayer-mpv-{os.getpid()}.sock"
 
-        LOG_DIR.mkdir(parents=True, exist_ok=True)
-        log_fh = open(MPV_LOG_FILE, "w")
+        MPV_LOG_DIR.mkdir(parents=True, exist_ok=True)
         self.process = subprocess.Popen(
             [
                 "mpv",
                 "--no-video",
                 "--audio-display=no",
-                "--no-terminal",
+                f"--log-file={MPV_LOG_FILE}",
                 f"--input-ipc-server={self.sock_path}",
                 f"--volume={self._volume}",
                 url,
             ],
             stdout=subprocess.DEVNULL,
-            stderr=log_fh,
+            stderr=subprocess.DEVNULL,
         )
         with self._lock:
             self._paused = False
@@ -134,6 +119,10 @@ class MpvPlayer:
             self._paused = True
             self._time_pos = 0.0
             self._duration = 0.0
+            self._idle = True
+            self._core_idle = True
+            self._paused_for_cache = False
+            self._eof_reached = False
 
     @staticmethod
     def _reap(proc: subprocess.Popen):
@@ -231,6 +220,10 @@ class MpvPlayer:
                         ("duration", self._on_duration),
                         ("pause", self._on_pause),
                         ("volume", self._on_volume),
+                        ("idle-active", self._on_idle),
+                        ("core-idle", self._on_core_idle),
+                        ("paused-for-cache", self._on_paused_for_cache),
+                        ("eof-reached", self._on_eof_reached),
                     ):
                         self._cmd_queue.put((["get_property", prop], handler))
 
@@ -300,3 +293,23 @@ class MpvPlayer:
         if value is not None:
             with self._lock:
                 self._volume = int(value)
+
+    def _on_idle(self, value):
+        if value is not None:
+            with self._lock:
+                self._idle = bool(value)
+
+    def _on_core_idle(self, value):
+        if value is not None:
+            with self._lock:
+                self._core_idle = bool(value)
+
+    def _on_paused_for_cache(self, value):
+        if value is not None:
+            with self._lock:
+                self._paused_for_cache = bool(value)
+
+    def _on_eof_reached(self, value):
+        if value is not None:
+            with self._lock:
+                self._eof_reached = bool(value)

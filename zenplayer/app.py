@@ -289,6 +289,8 @@ class ZenPlayer(App):
         self._bass_sent_at = 0.0
         self.queue: list[TrackInfo] = []
         self.current_track: Optional[TrackInfo] = None
+        self._playback_monitor = None
+        self._playback_check_count = 0
 
     def on_mount(self):
         self.install_screen(
@@ -496,12 +498,40 @@ class ZenPlayer(App):
             self.queue.insert(0, track)
         add_to_history(track, int(self.config.get("history_limit", 100)))
 
+        self._stop_playback_monitor()
+
         try:
             self.player.start(track.url)
         except Exception:
             self.notify("Failed to play track", severity="error")
+            return
+
+        self._playback_monitor = self.set_interval(1.0, self._check_playback_started)
+
+    def _check_playback_started(self) -> None:
+        """Warn user if mpv hasn't started playing after a few seconds."""
+        if self._playback_monitor is None:
+            return
+        if self.player.time_pos > 0:
+            self._stop_playback_monitor()
+            return
+        if self.player.process is None:
+            self._stop_playback_monitor()
+            self.notify("Playback failed — mpv exited", severity="error")
+            return
+        self._playback_check_count += 1
+        if self._playback_check_count >= 5:
+            self._stop_playback_monitor()
+            self.notify("Playback may have failed — track stuck at 0:00", severity="warning")
+
+    def _stop_playback_monitor(self) -> None:
+        if self._playback_monitor is not None:
+            self._playback_monitor.stop()
+            self._playback_monitor = None
+        self._playback_check_count = 0
 
     def action_quit(self) -> None:
+        self._stop_playback_monitor()
         if self.current_track and self.player.time_pos > 0:
             update_history_position(self.current_track.id, self.player.time_pos)
             self.config["last_track"] = self._track_to_dict(self.current_track)

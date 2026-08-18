@@ -317,6 +317,11 @@ class ZenPlayer(App):
         # Check for yt-dlp updates in background
         self.set_timer(2.0, self._check_ytdlp_update)
 
+    def _normalize_version(self, version: str) -> str:
+        """Normalize version string by removing leading zeros from each part."""
+        parts = version.split(".")
+        return ".".join(str(int(p)) for p in parts)
+
     def _check_ytdlp_update(self):
         """Check if yt-dlp has a newer version available."""
         try:
@@ -334,7 +339,7 @@ class ZenPlayer(App):
                 data = json.loads(resp.read())
                 latest = data["info"]["version"]
 
-            if current != latest:
+            if self._normalize_version(current) != self._normalize_version(latest):
                 self.notify(
                     f"yt-dlp update available: {latest} (you have {current})\n"
                     f"Press u to update",

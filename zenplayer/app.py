@@ -273,6 +273,7 @@ class ZenPlayer(App):
         Binding("h", "toggle_history", "History"),
         Binding("r", "resume_session", "Resume"),
         Binding("q", "quit", "Quit"),
+        Binding("u", "update_ytdlp", "Update yt-dlp"),
         Binding("escape", "unfocus", "Back"),
     ]
 
@@ -336,12 +337,28 @@ class ZenPlayer(App):
             if current != latest:
                 self.notify(
                     f"yt-dlp update available: {latest} (you have {current})\n"
-                    f"Run: pip install -U yt-dlp",
+                    f"Press u to update",
                     severity="info",
-                    timeout=10
+                    timeout=15
                 )
         except Exception:
             pass
+
+    def action_update_ytdlp(self):
+        """Update yt-dlp to latest version."""
+        self.notify("Updating yt-dlp...", severity="info", timeout=30)
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["pip", "install", "-U", "yt-dlp"],
+                capture_output=True, text=True, timeout=60
+            )
+            if result.returncode == 0:
+                self.notify("yt-dlp updated successfully!", severity="success", timeout=5)
+            else:
+                self.notify("Update failed — try manually:\npip install -U yt-dlp", severity="error", timeout=10)
+        except Exception:
+            self.notify("Update failed — try manually:\npip install -U yt-dlp", severity="error", timeout=10)
 
     def _repaint_if_dropped(self):
         if nonblocking_output.full():

@@ -82,6 +82,13 @@ class MpvPlayer:
         self.stop()
         self.sock_path = f"/tmp/zenplayer-mpv-{os.getpid()}.sock"
 
+        # Extract actual audio URL for YouTube to avoid 403 errors
+        if "youtube.com/watch" in url or "youtu.be/" in url:
+            from zenplayer.audio.extractor import extract_audio_url
+            audio_url = extract_audio_url(url)
+            if audio_url:
+                url = audio_url
+
         MPV_LOG_DIR.mkdir(parents=True, exist_ok=True)
         self.process = subprocess.Popen(
             [

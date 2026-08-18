@@ -313,6 +313,35 @@ class ZenPlayer(App):
         self.set_interval(0.5, self._repaint_if_dropped)
         if self.config.get("last_track"):
             pass  # ResumePrompt will show on mount
+        # Check for yt-dlp updates in background
+        self.set_timer(2.0, self._check_ytdlp_update)
+
+    def _check_ytdlp_update(self):
+        """Check if yt-dlp has a newer version available."""
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["yt-dlp", "--version"],
+                capture_output=True, text=True, timeout=5
+            )
+            current = result.stdout.strip()
+
+            import urllib.request
+            import json
+            url = "https://pypi.org/pypi/yt-dlp/json"
+            with urllib.request.urlopen(url, timeout=5) as resp:
+                data = json.loads(resp.read())
+                latest = data["info"]["version"]
+
+            if current != latest:
+                self.notify(
+                    f"yt-dlp update available: {latest} (you have {current})\n"
+                    f"Run: pip install -U yt-dlp",
+                    severity="info",
+                    timeout=10
+                )
+        except Exception:
+            pass
 
     def _repaint_if_dropped(self):
         if nonblocking_output.full():

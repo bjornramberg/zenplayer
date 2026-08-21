@@ -108,11 +108,15 @@ class AlbumArt(Widget):
             img = fallback_image(w, art_h * 2, seed)
 
         if self._turntable_mode:
-            circle_size = int(min(w, art_h * 2) * 0.8)
+            circle_size = int(min(w, art_h * 2) * 0.7)
             img = apply_circle_mask(img, circle_size)
             if self._rotation != 0:
                 img = img.rotate(self._rotation, resample=Image.BICUBIC, fillcolor=(0, 0, 0))
-            img = img.resize((w, art_h * 2), Image.LANCZOS)
+            canvas = Image.new("RGB", (w, art_h * 2), (0, 0, 0))
+            offset_x = (w - circle_size) // 2
+            offset_y = (art_h * 2 - circle_size) // 2
+            canvas.paste(img, (offset_x, offset_y))
+            img = canvas
 
         px = quantize_image(img, w, art_h * 2)
         self._art_rows = pixels_to_rows(px, w, art_h)

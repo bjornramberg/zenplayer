@@ -22,6 +22,7 @@ from zenplayer.widgets.zen_now_playing import ZenNowPlaying
 class PlayerScreen(Screen):
     BINDINGS = [
         Binding("f1", "toggle_zen", "Zen Mode"),
+        Binding("f2", "toggle_turntable", "Turntable"),
     ]
 
     def __init__(self, volume: int = 50, **kwargs):
@@ -64,6 +65,11 @@ class PlayerScreen(Screen):
 
     def action_toggle_zen(self):
         self.set_class(not self.has_class("zen"), "zen")
+
+    def action_toggle_turntable(self):
+        """Toggle turntable mode on/off."""
+        album_art = self.query_one(AlbumArt)
+        album_art.toggle_turntable()
 
     def _update_controls(self):
         if self.app.screen is not self:

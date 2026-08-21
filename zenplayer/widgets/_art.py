@@ -1,6 +1,6 @@
 import hashlib
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image, ImageDraw, ImageOps
 from rich.style import Style
 from rich.text import Text
 
@@ -9,6 +9,28 @@ PALETTE_COLORS = 128
 
 def _hex(rgb) -> str:
     return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
+
+
+def create_circular_mask(size):
+    """Create a circular mask for the given size."""
+    mask = Image.new("L", (size, size), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.ellipse((0, 0, size - 1, size - 1), fill=255)
+    return mask
+
+
+def apply_circle_mask(img, size):
+    """Crop and mask image to a circle, centered, with black background."""
+    w, h = img.size
+    side = min(w, h)
+    left = (w - side) // 2
+    top = (h - side) // 2
+    img = img.crop((left, top, left + side, top + side))
+    img = img.resize((size, size), Image.LANCZOS)
+    mask = create_circular_mask(size)
+    result = Image.new("RGB", (size, size), (0, 0, 0))
+    result.paste(img, mask=mask)
+    return result
 
 
 def fallback_image(width, height, seed):

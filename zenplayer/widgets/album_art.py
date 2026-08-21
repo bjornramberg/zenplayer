@@ -1,5 +1,6 @@
 from textual import work
 from textual.widget import Widget
+from PIL import Image
 
 from zenplayer.widgets._art import (
     PALETTE_COLORS,

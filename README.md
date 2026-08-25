@@ -2,6 +2,9 @@
 
 A terminal-based YouTube Music client with album-art now-playing display, bass-reactive glow, and session persistence.
 
+![zenplayer](preview.png)
+
+
 ## Features
 
 - **Search & play** YouTube music directly from the terminal

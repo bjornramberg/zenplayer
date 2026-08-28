@@ -3,6 +3,7 @@ from PIL import Image
 
 from zenplayer.widgets._art import (
     _hex,
+    apply_circle_mask,
     crop_square,
     fallback_image,
     image_to_rows,
@@ -71,6 +72,22 @@ def test_crop_square_taller_than_wide():
     img = Image.new("RGB", (50, 100), (100, 100, 100))
     result = crop_square(img)
     assert result.size == (50, 50)
+
+
+def test_apply_circle_mask_fills_disc_with_landscape_art():
+    img = Image.new("RGB", (100, 50), (255, 0, 0))
+    result = apply_circle_mask(img, 80)
+    assert result.size == (80, 160)
+    assert result.getpixel((0, 0)) == (0, 0, 0)
+    assert result.getpixel((40, 70)) == (255, 0, 0)
+
+
+def test_apply_circle_mask_fills_disc_with_portrait_art():
+    img = Image.new("RGB", (50, 100), (0, 255, 0))
+    result = apply_circle_mask(img, 80)
+    assert result.size == (80, 160)
+    assert result.getpixel((0, 0)) == (0, 0, 0)
+    assert result.getpixel((40, 70)) == (0, 255, 0)
 
 
 def test_quantize_image_returns_ndarray():

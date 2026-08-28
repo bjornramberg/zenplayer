@@ -20,16 +20,22 @@ def create_circular_mask(size):
 
 
 def apply_circle_mask(img, size):
-    """Crop and mask image to a circle, centered, with black background."""
-    w, h = img.size
-    side = min(w, h)
-    left = (w - side) // 2
-    top = (h - side) // 2
-    img = img.crop((left, top, left + side, top + side))
-    img = img.resize((size, size), Image.LANCZOS)
-    mask = create_circular_mask(size)
-    result = Image.new("RGB", (size, size), (0, 0, 0))
-    result.paste(img, mask=mask)
+    """Center-crop artwork to a square and mask its corners as a disc."""
+    source = crop_square(img).convert("RGB")
+    # Each terminal cell represents two vertical pixels via the half-block
+    # character, so the pixel buffer is twice as tall as it is wide.
+    source = source.resize((size, size * 2), Image.LANCZOS)
+
+    mask = Image.new("L", (size, size * 2), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.ellipse((0, 0, size - 1, size * 2 - 1), fill=255)
+    result = Image.new("RGB", (size, size * 2), (0, 0, 0))
+    result.paste(source, mask=mask)
+
+    # A subtle rim makes the record boundary visible against the black panel.
+    draw = ImageDraw.Draw(result)
+    draw.ellipse((1, 1, size - 2, size * 2 - 2), outline=(70, 70, 70), width=1)
+    draw.ellipse((size // 2 - 1, size - 2, size // 2 + 1, size + 2), fill=(170, 170, 170))
     return result
 
 
@@ -70,8 +76,8 @@ def crop_square(img):
     return img.crop((left, top, left + side, top + side))
 
 
-def quantize_image(img, w, px_h, palette_colors=PALETTE_COLORS):
-    fitted = ImageOps.fit(img, (w, px_h), Image.LANCZOS)
+def quantize_image(img, w, px_h, palette_colors=PALETTE_COLORS, fit=True):
+    fitted = ImageOps.fit(img, (w, px_h), Image.LANCZOS) if fit else img
     if fitted.mode != "RGB":
         fitted = fitted.convert("RGB")
     quantized = fitted.quantize(

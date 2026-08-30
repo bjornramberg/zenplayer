@@ -11,32 +11,43 @@ def _hex(rgb) -> str:
     return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
 
 
-def create_circular_mask(size):
-    """Create a circular mask for the given size."""
-    mask = Image.new("L", (size, size), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.ellipse((0, 0, size - 1, size - 1), fill=255)
-    return mask
+def apply_circle_mask(img, width_cells, height_cells):
+    """Render a turntable: a vinyl disc with the square artwork filling it.
 
-
-def apply_circle_mask(img, size):
-    """Center-crop artwork to a square and mask its corners as a disc."""
+    The artwork is center-cropped to a square, stretched onto the full disc,
+    then its corners are cut by a circular mask. A vinyl ring and rim are drawn
+    *outside* the artwork so the record boundary reads as a clean outer line
+    rather than a groove over the picture.
+    """
     source = crop_square(img).convert("RGB")
     # Each terminal cell represents two vertical pixels via the half-block
-    # character, so the pixel buffer is twice as tall as it is wide.
-    source = source.resize((size, size * 2), Image.LANCZOS)
+    # character, so the pixel buffer is twice as tall as the disc radius.
+    pixel_height = height_cells * 2
+    source = source.resize((width_cells, pixel_height), Image.LANCZOS)
 
-    mask = Image.new("L", (size, size * 2), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.ellipse((0, 0, size - 1, size * 2 - 1), fill=255)
-    result = Image.new("RGB", (size, size * 2), (0, 0, 0))
-    result.paste(source, mask=mask)
+    disc = Image.new("RGB", (width_cells, pixel_height), (0, 0, 0))
+    draw = ImageDraw.Draw(disc)
 
-    # A subtle rim makes the record boundary visible against the black panel.
-    draw = ImageDraw.Draw(result)
-    draw.ellipse((1, 1, size - 2, size * 2 - 2), outline=(70, 70, 70), width=1)
-    draw.ellipse((size // 2 - 1, size - 2, size // 2 + 1, size + 2), fill=(170, 170, 170))
-    return result
+    # Outer vinyl face and its rim sit at the very edge, behind everything.
+    draw.ellipse((0, 0, width_cells - 1, pixel_height - 1), fill=(16, 16, 16))
+    draw.ellipse((0, 0, width_cells - 1, pixel_height - 1), outline=(90, 90, 90), width=1)
+
+    # The artwork fills the disc but leaves a thin vinyl groove + rim around it.
+    margin = max(2, int(min(width_cells, pixel_height) * 0.03))
+    mask = Image.new("L", (width_cells, pixel_height), 0)
+    ImageDraw.Draw(mask).ellipse(
+        (margin, margin, width_cells - 1 - margin, pixel_height - 1 - margin),
+        fill=255,
+    )
+    disc.paste(source, (0, 0), mask)
+
+    # Center spindle.
+    center_x, center_y = width_cells // 2, pixel_height // 2
+    ImageDraw.Draw(disc).ellipse(
+        (center_x - 1, center_y - 2, center_x + 1, center_y + 2),
+        fill=(170, 170, 170),
+    )
+    return disc
 
 
 def fallback_image(width, height, seed):

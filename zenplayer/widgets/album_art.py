@@ -11,6 +11,9 @@ from zenplayer.widgets._art import (
 )
 from zenplayer.utils.thumbnail import load_thumbnail
 
+TERMINAL_CELL_HEIGHT_TO_WIDTH = 2.0
+OVERLAY_ROWS = 5
+
 
 class AlbumArt(Widget):
     auto_links = False
@@ -108,15 +111,17 @@ class AlbumArt(Widget):
             img = fallback_image(w, art_h * 2, seed)
 
         if self._turntable_mode:
-            disc_cells = max(1, int(min(w, art_h) * 0.7))
-            disc_width = disc_cells
-            disc_height = disc_cells * 2
-            img = apply_circle_mask(img, disc_cells)
+            visible_h = max(1, art_h - OVERLAY_ROWS)
+            max_width = max(1, int(w * 0.7))
+            max_height = max(1, int(visible_h * 0.7))
+            disc_height = max(1, min(max_height, int(max_width / TERMINAL_CELL_HEIGHT_TO_WIDTH)))
+            disc_width = max(1, int(disc_height * TERMINAL_CELL_HEIGHT_TO_WIDTH))
+            img = apply_circle_mask(img, disc_width, disc_height)
             if self._rotation != 0:
                 img = img.rotate(self._rotation, resample=Image.BICUBIC, fillcolor=(0, 0, 0))
             canvas = Image.new("RGB", (w, art_h * 2), (0, 0, 0))
             offset_x = (w - disc_width) // 2
-            offset_y = (art_h * 2 - disc_height) // 2
+            offset_y = ((visible_h - disc_height) // 2) * 2
             canvas.paste(img, (offset_x, offset_y))
             img = canvas
 

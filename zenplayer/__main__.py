@@ -14,7 +14,10 @@ def main() -> None:
     parser.add_argument(
         "-v", "--version", action="version", version=f"%(prog)s {__version__}"
     )
-    parser.parse_args()
+    parser.add_argument(
+        "--debug", action="store_true", help="Enable stack dump diagnostics"
+    )
+    args = parser.parse_args()
 
     if not shutil.which("mpv"):
         print("Error: mpv is not installed or not in PATH.", file=sys.stderr)
@@ -25,15 +28,18 @@ def main() -> None:
         print("  sudo dnf install mpv   # Fedora", file=sys.stderr)
         sys.exit(1)
 
-    stack_log = open("/tmp/zenplayer-stack.log", "w")
-    faulthandler.dump_traceback_later(10, repeat=True, file=stack_log)
+    stack_log = None
+    if args.debug:
+        stack_log = open("/tmp/zenplayer-stack.log", "w")
+        faulthandler.dump_traceback_later(10, repeat=True, file=stack_log)
     nonblocking_output.install()
     diagnostics.start()
     t0 = time.monotonic()
     app = ZenPlayer()
     app.run()
     diagnostics.log_line("run returned after %.3fs" % (time.monotonic() - t0))
-    stack_log.close()
+    if stack_log is not None:
+        stack_log.close()
     diagnostics.log_line("main returned (interpreter shutdown follows)")
 
 

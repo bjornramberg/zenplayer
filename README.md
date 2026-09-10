@@ -9,6 +9,7 @@ A terminal-based YouTube Music client with album-art now-playing display, bass-r
 
 - **Search & play** YouTube music directly from the terminal
 - **Album art now-playing** — track thumbnails rendered as truecolor half-block art filling the player panel, with a title/artist/progress-bar overlay
+- **Album art turntable** — track thumbnails rendered as a vinyl, going at it. Becuase why not?
 - **Bass-reactive glow** — the overlay background pulses with the music's low-end energy (40–240 Hz FFT)
 - **Dual-screen layout** — player view with search sidebar, toggled via `ctrl+p`
 - **Full-screen search** — debounced (300ms), cached (5min TTL) async search with configurable result depth

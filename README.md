@@ -38,7 +38,7 @@ A terminal-based YouTube Music client with album-art now-playing display, bass-r
 ### From PyPI
 
 ```bash
-pip install zenplayer
+pip install zenplayer #or pipx if you rather use that.
 ```
 
 ### From source

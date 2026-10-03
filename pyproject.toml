@@ -34,6 +34,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [project.scripts]
 zenplayer = "zenplayer.__main__:main"

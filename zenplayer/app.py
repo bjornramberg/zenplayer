@@ -321,7 +321,12 @@ class ZenPlayer(App):
         )
         self.install_screen(SearchScreen(name="search"), name="search")
         self.install_screen(HistoryScreen(name="history"), name="history")
-        self.push_screen("player")
+        if not self._debug:
+            def on_splash_done():
+                self.push_screen("player")
+            self.push_screen(SplashScreen(on_complete=on_splash_done))
+        else:
+            self.push_screen("player")
         fps = int(self.config.get("reactive_fps", 24))
         self._bass_interval = 1.0 / max(1, fps)
         self.set_interval(self._bass_interval, self._reactive_tick)

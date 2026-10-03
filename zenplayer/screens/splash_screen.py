@@ -55,7 +55,6 @@ class SplashScreen(Screen):
             if self._opacity <= 0.0:
                 if self._on_complete:
                     self._on_complete()
-                self.dismiss()
                 return
 
         self.query_one("#splash-art").styles.opacity = self._opacity

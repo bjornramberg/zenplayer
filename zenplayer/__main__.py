@@ -37,14 +37,6 @@ def main() -> None:
     diagnostics.start()
     t0 = time.monotonic()
     app = ZenPlayer(debug=args.debug)
-
-    if not args.debug:
-        def on_splash_done():
-            app.push_screen("player")
-        app.push_screen(SplashScreen(on_complete=on_splash_done))
-    else:
-        app.push_screen("player")
-
     app.run()
     diagnostics.log_line("run returned after %.3fs" % (time.monotonic() - t0))
     if stack_log is not None:

@@ -7,6 +7,7 @@ import time
 
 from zenplayer import __version__, diagnostics, nonblocking_output
 from zenplayer.app import ZenPlayer
+from zenplayer.screens.splash_screen import SplashScreen
 
 
 def main() -> None:
@@ -35,7 +36,15 @@ def main() -> None:
     nonblocking_output.install()
     diagnostics.start()
     t0 = time.monotonic()
-    app = ZenPlayer()
+    app = ZenPlayer(debug=args.debug)
+
+    if not args.debug:
+        def on_splash_done():
+            app.push_screen("player")
+        app.push_screen(SplashScreen(on_complete=on_splash_done))
+    else:
+        app.push_screen("player")
+
     app.run()
     diagnostics.log_line("run returned after %.3fs" % (time.monotonic() - t0))
     if stack_log is not None:

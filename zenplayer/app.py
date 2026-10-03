@@ -12,6 +12,7 @@ from zenplayer.config import load_config, save_config
 from zenplayer.screens.history_screen import HistoryScreen
 from zenplayer.screens.player_screen import PlayerScreen
 from zenplayer.screens.search_screen import SearchScreen
+from zenplayer.screens.splash_screen import SplashScreen
 from zenplayer.utils.history import add_to_history, update_history_position
 from zenplayer.widgets.album_art import AlbumArt
 from zenplayer.widgets.now_playing import NowPlayingOverlay
@@ -289,8 +290,9 @@ class ZenPlayer(App):
         Binding("escape", "unfocus", "Back"),
     ]
 
-    def __init__(self):
+    def __init__(self, debug: bool = False):
         super().__init__()
+        self._debug = debug
         self.config = load_config()
         self.player = MpvPlayer(volume=int(self.config.get("volume", 50)))
         self.analyzer = AudioAnalyzer()
@@ -665,7 +667,12 @@ class ZenPlayer(App):
         t1 = time.monotonic()
         self.analyzer.stop()
         t2 = time.monotonic()
-        self.exit()
+        if not self._debug:
+            def on_splash_done():
+                self.exit()
+            self.push_screen(SplashScreen(on_complete=on_splash_done))
+        else:
+            self.exit()
         t3 = time.monotonic()
         diagnostics.log_line(
             "quit: player.stop=%.3fs analyzer.stop=%.3fs exit=%.3fs"

@@ -678,16 +678,14 @@ class ZenPlayer(App):
                 save_config(self.config)
             except Exception:
                 pass
-        t0 = time.monotonic()
-        self.player.stop()
-        t1 = time.monotonic()
         self.analyzer.stop()
-        t2 = time.monotonic()
         if not self._debug:
             def on_splash_done():
+                self.player.stop()
                 self.exit()
             self.push_screen(SplashScreen(on_complete=on_splash_done))
         else:
+            self.player.stop()
             self.exit()
 
     def _track_from_dict(self, data: dict) -> TrackInfo:

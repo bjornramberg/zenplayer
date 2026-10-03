@@ -140,6 +140,17 @@ AlbumArt.turntable .turntable-hint {
     display: block;
 }
 
+SplashScreen {
+    background: #000000;
+}
+
+#splash-art {
+    width: auto;
+    height: auto;
+    align: center middle;
+    color: #c0c0c0;
+}
+
 NowPlayingOverlay {
     layer: overlay;
     dock: bottom;
@@ -678,11 +689,6 @@ class ZenPlayer(App):
             self.push_screen(SplashScreen(on_complete=on_splash_done))
         else:
             self.exit()
-        t3 = time.monotonic()
-        diagnostics.log_line(
-            "quit: player.stop=%.3fs analyzer.stop=%.3fs exit=%.3fs"
-            % (t1 - t0, t2 - t1, t3 - t2)
-        )
 
     def _track_from_dict(self, data: dict) -> TrackInfo:
         return TrackInfo(

@@ -21,7 +21,6 @@ class SplashScreen(Screen):
         super().__init__()
         self._on_complete = on_complete
         self._opacity = 0.0
-        self._phase = "in"
         self._start_time = 0.0
 
     def compose(self) -> ComposeResult:
@@ -32,7 +31,6 @@ class SplashScreen(Screen):
 
     def on_mount(self):
         self._start_time = time.monotonic()
-        self._phase = "in"
         self._opacity = 0.0
         self.query_one("#splash-art").styles.opacity = 0.0
         self.set_interval(0.05, self._tick)
@@ -40,21 +38,16 @@ class SplashScreen(Screen):
     def _tick(self):
         elapsed = time.monotonic() - self._start_time
 
-        if self._phase == "in":
-            self._opacity = min(1.0, elapsed / 0.5)
-            if self._opacity >= 1.0:
-                self._phase = "hold"
-                self._start_time = time.monotonic()
-        elif self._phase == "hold":
+        if elapsed < 0.5:
+            self._opacity = elapsed / 0.5
+        elif elapsed < 1.5:
             self._opacity = 1.0
-            if elapsed >= 1.0:
-                self._phase = "out"
-                self._start_time = time.monotonic()
-        elif self._phase == "out":
-            self._opacity = max(0.0, 1.0 - elapsed / 0.5)
-            if self._opacity <= 0.0:
-                if self._on_complete:
-                    self._on_complete()
-                return
+        else:
+            self._opacity = max(0.0, 1.0 - (elapsed - 1.5) / 0.5)
+
+        if self._opacity <= 0.0 and elapsed >= 2.0:
+            if self._on_complete:
+                self._on_complete()
+            return
 
         self.query_one("#splash-art").styles.opacity = self._opacity

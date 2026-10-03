@@ -1,5 +1,6 @@
 from textual import work
 from textual.widget import Widget
+from textual.widgets import Label
 from PIL import Image
 
 from zenplayer.widgets._art import (
@@ -28,15 +29,20 @@ class AlbumArt(Widget):
         self._turntable_mode = False
         self._spin_timer = None
 
+    def compose(self):
+        yield Label("[f2] Turntable", id="turntable-hint", classes="turntable-hint")
+
     def toggle_turntable(self):
         """Toggle turntable mode on/off."""
         self._turntable_mode = not self._turntable_mode
         if self._turntable_mode:
             self._start_spinning()
+            self.add_class("turntable")
         else:
             self._stop_spinning()
             self._rotation = 0.0
             self._art_key = None
+            self.remove_class("turntable")
             self.refresh()
 
     def set_track(self, track):

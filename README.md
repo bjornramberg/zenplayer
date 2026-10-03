@@ -88,10 +88,10 @@ Global (all screens):
 | `space` | Play / Pause |
 | `→` / `←` | Seek forward / backward 5s |
 | `shift+→` / `shift+←` | Seek forward / backward 30s |
-| `+` / `-` | Volume up / down (5% steps) |
-| `shift++` / `shift+-` | Volume up / down (15% steps) |
-| `j` / `k` | Next / Previous track |
-| `f` or `/` | Focus search input |
+| `↑` / `↓` | Volume up / down (5% steps) |
+| `shift+↑` / `shift+↓` | Volume up / down (15% steps) |
+| `n` / `p` | Next / Previous track |
+| `/` | Focus search input |
 | `h` | Toggle history screen |
 | `r` | Resume last session |
 | `q` | Quit |
@@ -102,6 +102,7 @@ Player screen:
 | Key | Action |
 |---|---|
 | `f1` | Toggle zen mode |
+| `f2` | Toggle turntable mode |
 
 History screen:
 

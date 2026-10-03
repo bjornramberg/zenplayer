@@ -125,6 +125,20 @@ AlbumArt {
     height: 1fr;
 }
 
+AlbumArt .turntable-hint {
+    dock: top;
+    width: auto;
+    height: 1;
+    color: #555555;
+    text-align: right;
+    padding: 0 1;
+    display: none;
+}
+
+AlbumArt.turntable .turntable-hint {
+    display: block;
+}
+
 NowPlayingOverlay {
     layer: overlay;
     dock: bottom;
@@ -262,18 +276,16 @@ class ZenPlayer(App):
         Binding("left", "seek_backward", "Backward"),
         Binding("shift+right", "seek_forward_large", "Forward 30s"),
         Binding("shift+left", "seek_backward_large", "Backward 30s"),
-        Binding("+", "volume_up", "Vol Up"),
-        Binding("-", "volume_down", "Vol Down"),
-        Binding("shift++", "volume_up_large", "Vol Up 15%"),
-        Binding("shift+-", "volume_down_large", "Vol Down 15%"),
-        Binding("j", "next_track", "Next"),
-        Binding("k", "previous_track", "Prev"),
-        Binding("f", "focus_search", "Search"),
+        Binding("up", "volume_up", "Vol Up"),
+        Binding("down", "volume_down", "Vol Down"),
+        Binding("shift+up", "volume_up_large", "Vol Up 15%"),
+        Binding("shift+down", "volume_down_large", "Vol Down 15%"),
+        Binding("n", "next_track", "Next"),
+        Binding("p", "previous_track", "Prev"),
         Binding("/", "focus_search", "Search"),
         Binding("h", "toggle_history", "History"),
         Binding("r", "resume_session", "Resume"),
         Binding("q", "quit", "Quit"),
-        Binding("u", "update_ytdlp", "Update yt-dlp"),
         Binding("escape", "unfocus", "Back"),
     ]
 
@@ -348,22 +360,6 @@ class ZenPlayer(App):
                 )
         except Exception:
             pass
-
-    def action_update_ytdlp(self):
-        """Update yt-dlp to latest version."""
-        self.notify("Updating yt-dlp...", severity="info", timeout=30)
-        try:
-            import subprocess
-            result = subprocess.run(
-                ["pip", "install", "-U", "yt-dlp"],
-                capture_output=True, text=True, timeout=60
-            )
-            if result.returncode == 0:
-                self.notify("yt-dlp updated successfully!", severity="success", timeout=5)
-            else:
-                self.notify("Update failed — try manually:\npip install -U yt-dlp", severity="error", timeout=10)
-        except Exception:
-            self.notify("Update failed — try manually:\npip install -U yt-dlp", severity="error", timeout=10)
 
     def _repaint_if_dropped(self):
         if nonblocking_output.full():

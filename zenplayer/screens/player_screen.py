@@ -3,7 +3,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Footer, Input, Label
+from textual.widgets import Input, Label
 from textual.widgets._list_view import ListView
 
 from zenplayer.audio.extractor import search
@@ -17,6 +17,17 @@ from zenplayer.widgets.resume_prompt import ResumePrompt
 from zenplayer.widgets.search_preview import SearchPreview
 from zenplayer.widgets.search_results import SearchResults
 from zenplayer.widgets.zen_now_playing import ZenNowPlaying
+
+
+class FooterBar(Label):
+    """Custom single-line footer with grouped keyboard shortcuts."""
+
+    def render(self) -> str:
+        return (
+            "[n] Prev [space] Play [p] Next │ [↑↓] Vol │ [←→] Seek │ "
+            "[shift+←→] Seek 30s │ [/] Search │ [h] Hist │ [r] Resume │ "
+            "[esc] Back │ [q] Quit"
+        )
 
 
 class PlayerScreen(Screen):
@@ -44,7 +55,7 @@ class PlayerScreen(Screen):
             yield QueueView()
             yield Controls(volume=self._volume)
             yield ZenNowPlaying()
-            yield Footer()
+            yield FooterBar()
 
     def on_mount(self):
         self._art_track = None

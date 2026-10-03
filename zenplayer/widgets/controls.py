@@ -17,11 +17,13 @@ class Controls(Horizontal):
         yield Button("⏮", id="btn-prev", classes="control-btn")
         yield Button("⏸", id="btn-play", classes="control-btn")
         yield Button("⏭", id="btn-next", classes="control-btn")
+        yield Label("│", id="sep1")
         yield Label("Vol:", id="vol-label")
         filled = max(0, min(10, self.volume // 10))
         yield Label(
             "█" * filled + "░" * (10 - filled), id="vol-bar", classes="vol-bar"
         )
+        yield Label("│", id="sep2")
         yield Label("0:00 / 0:00", id="time-display", classes="time")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

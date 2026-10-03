@@ -22,7 +22,7 @@ A terminal-based YouTube Music client with album-art now-playing display, bass-r
 - **Zen mode** — minimal, visually dampened full-screen view with just title, artist, and basic controls
 - **Stall-resistant output** — a non-blocking terminal writer with drop detection that self-recovers on slow terminals
 - **Thumbnail caching** — cover art cached on disk for instant replays
-- **Splash screen** — ASCII art fade-in/out on startup and shutdown (skip with `--debug`)
+- **Splash screen** — Customizable ASCII art fade-in/out on startup and shutdown
 
 ## Requirements
 

@@ -57,7 +57,12 @@ ResumePrompt {
 }
 
 Footer {
+    display: none;
+}
+
+FooterBar {
     height: 1;
+    background: #000000;
 }
 
 ZenNowPlaying { display: none; }
@@ -66,7 +71,7 @@ ZenNowPlaying { display: none; }
 Screen.zen #main-area,
 Screen.zen QueueView,
 Screen.zen Controls,
-Screen.zen Footer { display: none; }
+Screen.zen FooterBar { display: none; }
 
 Screen.zen ZenNowPlaying { display: block; }
 
@@ -101,18 +106,6 @@ ZenNowPlaying {
 
 #zen-controls {
     align: center middle;
-}
-
-.zen-btn {
-    background: transparent;
-    border: solid transparent;
-    padding: 0 1;
-    min-width: 0;
-    height: auto;
-}
-
-.zen-btn:hover {
-    background: #1a1a1a;
 }
 
 #player-panel {
@@ -157,34 +150,12 @@ NowPlayingOverlay {
     height: 5;
 }
 
-Controls {
-    height: 3;
-    background: #0a0a0a;
-    border-top: solid #222222;
-    color: #c0c0c0;
-}
 
 QueueView {
     height: 3;
     background: #0a0a0a;
     border-top: solid #222222;
     color: #555555;
-}
-
-.control-btn {
-    background: transparent;
-    border: solid transparent;
-    padding: 0 1;
-    min-width: 0;
-    height: auto;
-}
-
-.control-btn:hover {
-    background: #1a1a1a;
-}
-
-.control-btn.-active {
-    background: #222222;
 }
 
 .vol-bar {

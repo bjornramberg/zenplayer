@@ -3,14 +3,14 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Input, Label
+from textual.content import Text
+from textual.widgets import Input, Label, Static
 from textual.widgets._list_view import ListView
 
 from zenplayer.audio.extractor import search
 from zenplayer import nonblocking_output
 from zenplayer.utils.cache import get_cached, set_cached
 from zenplayer.widgets.album_art import AlbumArt
-from zenplayer.widgets.controls import Controls
 from zenplayer.widgets.now_playing import NowPlayingOverlay
 from zenplayer.widgets.queue_view import QueueView
 from zenplayer.widgets.resume_prompt import ResumePrompt
@@ -19,15 +19,43 @@ from zenplayer.widgets.search_results import SearchResults
 from zenplayer.widgets.zen_now_playing import ZenNowPlaying
 
 
-class FooterBar(Label):
+class FooterBar(Static):
     """Custom single-line footer with grouped keyboard shortcuts."""
 
-    def render(self) -> str:
-        return (
-            "[n] Prev [space] Play [p] Next │ [↑↓] Vol │ [←→] Seek │ "
-            "[shift+←→] Seek 30s │ [/] Search │ [h] Hist │ [r] Resume │ "
-            "[esc] Back │ [q] Quit"
+    def __init__(self, volume: int = 50, **kwargs):
+        super().__init__(**kwargs)
+        self._volume = volume
+
+    def render(self) -> Text:
+        hints = (
+            "[space] Play │ [↑↓] Vol │ [←→] Seek 5s │ "
+            "[shift+←→] Seek 30s │ [/] Search │ [h] History │ "
+            "[r] Resume last session │ [q] Quit"
         )
+        vol_text = self._vol_text(self._volume)
+
+        width = self.content_size.width
+        hints_len = len(hints)
+        vol_len = len(vol_text.plain)
+        padding = max(0, width - hints_len - vol_len - 10)
+
+        t = Text()
+        t.append(hints)
+        t.append(" " * padding)
+        t.append("│ Volume ")
+        t.append_text(vol_text)
+        return t
+
+    def _vol_text(self, volume: int) -> Text:
+        filled = max(0, min(10, volume // 10))
+        t = Text()
+        t.append("█" * filled, style="#808080")
+        t.append("░" * (10 - filled), style="#8a8a8a")
+        return t
+
+    def update_volume(self, volume: int):
+        self._volume = volume
+        self.refresh()
 
 
 class PlayerScreen(Screen):
@@ -53,9 +81,8 @@ class PlayerScreen(Screen):
                     yield AlbumArt()
                     yield NowPlayingOverlay()
             yield QueueView()
-            yield Controls(volume=self._volume)
             yield ZenNowPlaying()
-            yield FooterBar()
+            yield FooterBar(volume=self._volume)
 
     def on_mount(self):
         self._art_track = None
@@ -65,14 +92,12 @@ class PlayerScreen(Screen):
             try:
                 prompt = self.query_one(ResumePrompt)
                 prompt.show()
-                self.set_timer(0.1, lambda: prompt.focus())
             except Exception:
                 pass
-        else:
-            try:
-                self.query_one("#player-search").focus()
-            except Exception:
-                pass
+        try:
+            self.query_one("#player-search").focus()
+        except Exception:
+            pass
 
     def action_toggle_zen(self):
         self.set_class(not self.has_class("zen"), "zen")
@@ -94,13 +119,8 @@ class PlayerScreen(Screen):
             # _repaint_if_dropped catches everything up.
             return
 
-        controls = self.query_one(Controls)
-        controls.update_state(
-            paused=app.player.paused,
-            volume=app.player.volume,
-            time_pos=app.player.time_pos,
-            duration=app.player.duration,
-        )
+        footer = self.query_one(FooterBar)
+        footer.update_volume(app.player.volume)
 
         album_art = self.query_one(AlbumArt)
         overlay = self.query_one(NowPlayingOverlay)

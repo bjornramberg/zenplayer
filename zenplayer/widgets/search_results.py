@@ -1,4 +1,4 @@
-from textual.app import ComposeResult
+from textual.app import ComposeResult, Binding
 from textual.containers import Vertical
 from textual.widgets import ListView, ListItem, Label
 
@@ -25,6 +25,11 @@ class SearchResultItem(ListItem):
 
 
 class SearchResults(Vertical):
+    BINDINGS = [
+        Binding("shift+up", "app.volume_up", "Vol Up"),
+        Binding("shift+down", "app.volume_down", "Vol Down"),
+    ]
+
     def __init__(self):
         super().__init__()
         self._results: list = []

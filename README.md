@@ -75,8 +75,7 @@ The search bar is focused on startup — just start typing to search. Press `esc
 | `space` | Play / Pause |
 | `→` / `←` | Seek forward / backward 5s |
 | `shift+→` / `shift+←` | Seek forward / backward 30s |
-| `↑` / `↓` | Volume up / down (5% steps) |
-| `shift+↑` / `shift+↓` | Volume up / down (15% steps) |
+| `shift+↑` / `shift+↓` | Volume up / down |
 | `n` / `p` | Next / Previous track |
 | `/` | Focus search input |
 | `h` | Toggle history screen |

@@ -33,7 +33,7 @@ class SplashScreen(Screen):
         self._start_time = time.monotonic()
         self._opacity = 0.0
         self.query_one("#splash-art").styles.opacity = 0.0
-        self.set_interval(0.05, self._tick)
+        self._timer = self.set_interval(0.05, self._tick)
 
     def _tick(self):
         elapsed = time.monotonic() - self._start_time
@@ -46,6 +46,7 @@ class SplashScreen(Screen):
             self._opacity = max(0.0, 1.0 - (elapsed - 1.5) / 0.5)
 
         if self._opacity <= 0.0 and elapsed >= 2.0:
+            self._timer.stop()
             if self._on_complete:
                 self._on_complete()
             return

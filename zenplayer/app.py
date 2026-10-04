@@ -683,10 +683,20 @@ class ZenPlayer(App):
             def on_splash_done():
                 self.player.stop()
                 self.exit()
-            self.push_screen(SplashScreen(on_complete=on_splash_done))
+            self._log(f"action_quit: pushing splash (debug={self._debug})")
+            try:
+                self.push_screen(SplashScreen(on_complete=on_splash_done))
+                self._log("action_quit: push_screen returned OK")
+            except Exception as e:
+                self._log(f"action_quit: push_screen FAILED: {e}")
         else:
             self.player.stop()
             self.exit()
+
+    def _log(self, msg: str) -> None:
+        with open("/tmp/zenplayer-app.log", "a") as f:
+            import time as _t
+            f.write(f"{_t.monotonic():.3f} {msg}\n")
 
     def _track_from_dict(self, data: dict) -> TrackInfo:
         return TrackInfo(
